@@ -37,9 +37,9 @@ class Session
    private $expiry;
 
    /**
-    * @var OauthMicrosoft
+    * @var OAuthMicrosoft
     */
-   private $oauthMicrosoft;
+   private $oAuthMicrosoft;
 
    public function __construct(Account $account)
    {
@@ -124,15 +124,15 @@ class Session
    }
 
    /**
-    * Lazy loading @see OauthMicrosoft instance by demand.
-    * @return OauthMicrosoft
+    * Lazy loading @see OAuthMicrosoft instance by demand.
+    * @return OAuthMicrosoft
     */
-   public function getOauthMicrosoft()
+   public function getOAuthMicrosoft()
    {
-      if (null === $this->oauthMicrosoft)
+      if (null === $this->oAuthMicrosoft)
       {
-         $this->oauthMicrosoft = new OauthMicrosoft();
+         $this->oAuthMicrosoft = new OAuthMicrosoft();
       }
-      return $this->oauthMicrosoft;
+      return $this->oAuthMicrosoft;
    }
 }

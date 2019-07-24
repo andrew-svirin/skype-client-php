@@ -86,7 +86,7 @@ final class Client
       {
          throw new  ClientOauthMicrosoftLoginException('Missing arguments');
       }
-      $oauthMicrosoft = $session->getOauthMicrosoft();
+      $oauthMicrosoft = $session->getOAuthMicrosoft();
       $oauthMicrosoft->setLoginUrl((string)$loginURL[1]);
       $oauthMicrosoft->setPPFT((string)$ppft[2]);
       $oauthMicrosoft->setPPSX((string)$ppsx[1]);
@@ -107,14 +107,14 @@ final class Client
     */
    private function loginOauthMicrosoftRedirect(Session $session)
    {
-      $response = $this->httpClient->request('POST', $session->getOauthMicrosoft()->getLoginUrl(), [
+      $response = $this->httpClient->request('POST', $session->getOAuthMicrosoft()->getLoginUrl(), [
          'body' => [
             'loginfmt' => $session->getAccount()->getUsername(),
             'login' => $session->getAccount()->getUsername(),
             'passwd' => $session->getAccount()->getPassword(),
             'type' => 11,
-            'PPFT' => $session->getOauthMicrosoft()->getPPFT(),
-            'PPSX' => $session->getOauthMicrosoft()->getPPSX(),
+            'PPFT' => $session->getOAuthMicrosoft()->getPPFT(),
+            'PPSX' => $session->getOAuthMicrosoft()->getPPSX(),
             'NewUser' => 1,
             'LoginOptions' => 3,
             'FoundMSAs' => '',
@@ -128,7 +128,7 @@ final class Client
             'i13' => 0
          ],
          'headers' => array_merge($this->genSessionHeaders($session), [
-            'Cookie' => $session->getOauthMicrosoft()->getCookies(),
+            'Cookie' => $session->getOAuthMicrosoft()->getCookies(),
          ]),
       ]);
       if (Response::HTTP_OK !== $response->getStatusCode())
@@ -136,15 +136,13 @@ final class Client
          throw new  ClientOauthMicrosoftRedirectLoginException('Incorrect status code');
       }
       $page = $response->getContent();
-
-
-      preg_match("`<input type=\"hidden\" name=\"NAP\" id=\"NAP\" value=\"(.+)\">`isU", $page, $NAP);
-      preg_match("`<input type=\"hidden\" name=\"ANON\" id=\"ANON\" value=\"(.+)\">`isU", $page, $ANON);
-      preg_match("`<input type=\"hidden\" name=\"t\" id=\"t\" value=\"(.+)\">`isU", $page, $t);
-
-      if (!isset($NAP[1]) || !isset($ANON[1]) || !isset($t[1]))
+      preg_match('/<input type="hidden" name="NAP" id="NAP" value="(.+)">/isU', $page, $NAP);
+      preg_match('/<input type="hidden" name="ANON" id="ANON" value="(.+)">/isU', $page, $ANON);
+      preg_match('/<input type="hidden" name="t" id="t" value="(.+)">/isU', $page, $t);
+      $headers = $response->getHeaders();
+      if (!isset($NAP[1]) || !isset($ANON[1]) || !isset($t[1])|| empty($headers['set-cookie']))
       {
-         exit(trigger_error("Skype : Authentication failed for {$this->username}", E_USER_WARNING));
+         throw new  ClientOauthMicrosoftRedirectLoginException('Missing arguments');
       }
 
       $NAP = $NAP[1];
@@ -156,11 +154,6 @@ final class Client
       for ($i = 0; $i <= count($cookiesArray[1]) - 1; $i++)
          $cookies .= "{$cookiesArray[1][$i]}={$cookiesArray[2][$i]}; ";
 
-      $post = [
-         "NAP" => $NAP,
-         "ANON" => $ANON,
-         "t" => $t
-      ];
    }
 
    /**
@@ -177,6 +170,11 @@ final class Client
       $this->loginOauthMicrosoft($session);
       $this->loginOauthMicrosoftRedirect($session);
 
+      $post = [
+         "NAP" => $NAP,
+         "ANON" => $ANON,
+         "t" => $t
+      ];
 
       $loginForm = $this->web("https://lw.skype.com/login/oauth/proxy?client_id=578134&redirect_uri=https://web.skype.com/&site_name=lw.skype.com&wa=wsignin1.0", "POST", $post, true, true, $cookies);
 

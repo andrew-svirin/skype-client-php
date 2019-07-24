@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 /**
  * Decorator for class @see Session that holds data retrieved from Oauth Microsoft.
  */
-class OauthMicrosoft
+class OAuthMicrosoft
 {
    /**
     * @var string
