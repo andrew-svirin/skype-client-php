@@ -5,24 +5,24 @@ namespace AndriySvirin\SkypeBot\models;
 use Symfony\Component\HttpFoundation\Cookie;
 
 /**
- * Property for class @see Session that holds data retrieved from OAuth Microsoft.
+ * Property for class @see Session that holds data retrieved from OAuth Microsoft Redirect.
  */
-class OAuthMicrosoft
+class OAuthMicrosoftRedirect
 {
    /**
     * @var string
     */
-   private $loginUrl;
+   private $nap;
 
    /**
     * @var string
     */
-   private $ppft;
+   private $anon;
 
    /**
     * @var string
     */
-   private $ppsx;
+   private $t;
 
    /**
     * @var Cookie[]
@@ -32,49 +32,49 @@ class OAuthMicrosoft
    /**
     * @return string
     */
-   public function getLoginUrl(): string
+   public function getNAP(): string
    {
-      return $this->loginUrl;
+      return $this->nap;
    }
 
    /**
     * @param string $value
     */
-   public function setLoginUrl(string $value)
+   public function setNAP(string $value)
    {
-      $this->loginUrl = $value;
+      $this->nap = $value;
    }
 
    /**
     * @return string
     */
-   public function getPPFT(): string
+   public function getANON(): string
    {
-      return $this->ppft;
+      return $this->anon;
    }
 
    /**
     * @param string $value
     */
-   public function setPPFT(string $value)
+   public function setANON(string $value)
    {
-      $this->ppft = $value;
+      $this->anon = $value;
    }
 
    /**
     * @return string
     */
-   public function getPPSX(): string
+   public function getT(): string
    {
-      return $this->ppsx;
+      return $this->t;
    }
 
    /**
     * @param string $value
     */
-   public function setPPSX(string $value)
+   public function setT(string $value)
    {
-      $this->ppsx = $value;
+      $this->t = $value;
    }
 
    /**
@@ -93,4 +93,5 @@ class OAuthMicrosoft
    {
       $this->cookies[] = $cookie;
    }
+
 }

@@ -41,6 +41,16 @@ class Session
     */
    private $oAuthMicrosoft;
 
+   /**
+    * @var OAuthMicrosoftRedirect
+    */
+   private $oAuthMicrosoftRedirect;
+
+   /**
+    * @var OAuthSkype
+    */
+   private $oAuthSkype;
+
    public function __construct(Account $account)
    {
       $this->account = $account;
@@ -135,4 +145,31 @@ class Session
       }
       return $this->oAuthMicrosoft;
    }
+
+   /**
+    * Lazy loading @see OAuthMicrosoftRedirect instance by demand.
+    * @return OAuthMicrosoftRedirect
+    */
+   public function getOAuthMicrosoftRedirect()
+   {
+      if (null === $this->oAuthMicrosoftRedirect)
+      {
+         $this->oAuthMicrosoftRedirect = new OAuthMicrosoftRedirect();
+      }
+      return $this->oAuthMicrosoftRedirect;
+   }
+
+   /**
+    * Lazy loading @see getOAuthSkype instance by demand.
+    * @return OAuthSkype
+    */
+   public function getOAuthSkype()
+   {
+      if (null === $this->oAuthSkype)
+      {
+         $this->oAuthSkype = new OAuthSkype();
+      }
+      return $this->oAuthSkype;
+   }
+
 }

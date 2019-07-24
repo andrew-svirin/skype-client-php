@@ -24,7 +24,7 @@ final class ClientTest extends TestCase
       $sessionManager = new SessionManager($this->cacheDir . '/skype-bot-php');
       $sessionManager->loadSession($session);
       $client = new Client($this->cacheDir . '/skype-bot-php');
-      $client->loginAccount($session);
+      $client->login($session);
 
       $this->assertTrue(true);
    }
