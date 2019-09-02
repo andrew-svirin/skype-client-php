@@ -20,11 +20,9 @@ final class ClientTest extends TestCase
       $username = $credentials['user']['username'];
       $password = base64_decode($credentials['user']['password']);
       $account = new Account($username, $password);
-      $session = new Session($account);
       $sessionManager = new SessionManager($this->cacheDir . '/skype-bot-php');
-      $sessionManager->loadSession($session);
-      $client = new Client($this->cacheDir . '/skype-bot-php');
-      $client->login($session);
+      $client = new Client($sessionManager);
+      $client->login($account);
 
       $this->assertTrue(true);
    }

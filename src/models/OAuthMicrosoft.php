@@ -93,4 +93,5 @@ class OAuthMicrosoft
    {
       $this->cookies[] = $cookie;
    }
+
 }

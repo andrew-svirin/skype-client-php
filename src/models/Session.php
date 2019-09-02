@@ -2,6 +2,8 @@
 
 namespace AndriySvirin\SkypeBot\models;
 
+use DateTime;
+
 /**
  * Decorator for class @see Account that holds data related for cache.
  */
@@ -30,9 +32,9 @@ class Session
    private $registrationToken;
 
    /**
-    * Timestamp until the cache is valid.
+    * DateTime until the cache is valid.
     *
-    * @var int
+    * @var DateTime
     */
    private $expiry;
 
@@ -50,6 +52,11 @@ class Session
     * @var OAuthSkype
     */
    private $oAuthSkype;
+
+   /**
+    * @var Skype
+    */
+   private $skype;
 
    public function __construct(Account $account)
    {
@@ -97,7 +104,7 @@ class Session
    }
 
    /**
-    * @return int
+    * @return DateTime
     */
    public function getExpiry()
    {
@@ -105,19 +112,19 @@ class Session
    }
 
    /**
-    * @param int $expiry
+    * @param DateTime $expiry
     */
-   public function setExpiry($expiry)
+   public function setExpiry(DateTime $expiry)
    {
       $this->expiry = $expiry;
    }
 
    /**
     * Check if @see Session is expired.
-    * @param null|int $now
+    * @param DateTime $now
     * @return bool
     */
-   public function isExpired($now = null)
+   public function isExpired(DateTime $now)
    {
       $result = $now > $this->expiry;
       return $result;
@@ -134,42 +141,64 @@ class Session
    }
 
    /**
-    * Lazy loading @see OAuthMicrosoft instance by demand.
     * @return OAuthMicrosoft
     */
    public function getOAuthMicrosoft()
    {
-      if (null === $this->oAuthMicrosoft)
-      {
-         $this->oAuthMicrosoft = new OAuthMicrosoft();
-      }
       return $this->oAuthMicrosoft;
    }
 
    /**
-    * Lazy loading @see OAuthMicrosoftRedirect instance by demand.
+    * @param OAuthMicrosoft $oAuthMicrosoft
+    */
+   public function setOAuthMicrosoft(OAuthMicrosoft $oAuthMicrosoft)
+   {
+      $this->oAuthMicrosoft = $oAuthMicrosoft;
+   }
+
+   /**
     * @return OAuthMicrosoftRedirect
     */
    public function getOAuthMicrosoftRedirect()
    {
-      if (null === $this->oAuthMicrosoftRedirect)
-      {
-         $this->oAuthMicrosoftRedirect = new OAuthMicrosoftRedirect();
-      }
       return $this->oAuthMicrosoftRedirect;
    }
 
    /**
-    * Lazy loading @see getOAuthSkype instance by demand.
+    * @param OAuthMicrosoftRedirect $oAuthMicrosoftRedirect
+    */
+   public function setOAuthMicrosoftRedirect(OAuthMicrosoftRedirect $oAuthMicrosoftRedirect)
+   {
+      $this->oAuthMicrosoftRedirect = $oAuthMicrosoftRedirect;
+   }
+
+   /**
     * @return OAuthSkype
     */
    public function getOAuthSkype()
    {
-      if (null === $this->oAuthSkype)
-      {
-         $this->oAuthSkype = new OAuthSkype();
-      }
       return $this->oAuthSkype;
+   }
+
+   /**
+    * @param OAuthSkype $oAuthSkype
+    */
+   public function setOAuthSkype(OAuthSkype $oAuthSkype)
+   {
+      $this->oAuthSkype = $oAuthSkype;
+   }
+
+   /**
+    * Lazy loading @see Skype instance by demand.
+    * @return Skype
+    */
+   public function getSkype()
+   {
+      if (null === $this->skype)
+      {
+         $this->skype = new Skype();
+      }
+      return $this->skype;
    }
 
 }

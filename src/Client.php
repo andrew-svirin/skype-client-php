@@ -5,10 +5,18 @@ namespace AndriySvirin\SkypeBot;
 use AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftLoginException;
 use AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftRedirectLoginException;
 use AndriySvirin\SkypeBot\exceptions\ClientOauthSkypeLoginException;
+use AndriySvirin\SkypeBot\exceptions\SessionException;
+use AndriySvirin\SkypeBot\models\Account;
+use AndriySvirin\SkypeBot\models\OAuthMicrosoft;
+use AndriySvirin\SkypeBot\models\OAuthMicrosoftRedirect;
+use AndriySvirin\SkypeBot\models\OAuthSkype;
 use AndriySvirin\SkypeBot\models\Session;
+use AndriySvirin\SkypeBot\services\SessionManager;
+use DateTime;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class Client
 {
@@ -16,74 +24,23 @@ final class Client
    const CLIENT_ID = 578134;
 
    /**
-    * @var \Symfony\Contracts\HttpClient\HttpClientInterface
+    * @var HttpClientInterface
     */
    private $httpClient;
 
-   public function __construct()
+   /**
+    * @var SessionManager
+    */
+   private $sessionManager;
+
+   public function __construct(SessionManager $sessionManager)
    {
       $this->httpClient = HttpClient::create([
          'headers' => [
-
             'User-Agent' => 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
          ],
       ]);
-   }
-
-   /**
-    * @param Session $session
-    * @return bool
-    * @throws ClientOauthMicrosoftLoginException
-    * @throws ClientOauthMicrosoftRedirectLoginException
-    * @throws ClientOauthSkypeLoginException
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    */
-   public function login(Session $session)
-   {
-      $this->loginOAuthMicrosoft($session);
-      $this->loginOAuthMicrosoftRedirect($session);
-      $this->loginOauthSkype($session);
-
-
-      $post = [
-         "t" => $t,
-         "site_name" => "lw.skype.com",
-         "oauthPartner" => 999,
-         "form" => "",
-         "client_id" => 578134,
-         "redirect_uri" => "https://web.skype.com/"
-      ];
-
-
-      $login = $this->web("https://login.skype.com/login/microsoft?client_id=578134&redirect_uri=https://web.skype.com/", "POST", $post);
-
-      preg_match("`<input type=\"hidden\" name=\"skypetoken\" value=\"(.+)\"/>`isU", $login, $skypeToken);
-      $this->skypeToken = $skypeToken[1];
-
-
-      $login = $this->web("https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/endpoints", "POST", "{}", true);
-
-      preg_match("`registrationToken=(.+);`isU", $login, $registrationToken);
-      $this->registrationToken = $registrationToken[1];
-
-
-      $expiry = time() + 21600;
-
-      $cache = [
-         "skypeToken" => $this->skypeToken,
-         "registrationToken" => $this->registrationToken,
-         "expiry" => $expiry
-      ];
-
-      $this->expiry = $expiry;
-      $this->logged = true;
-
-      file_put_contents("{$this->folder}/auth_{$this->hashedUsername}", json_encode($cache));
-
-      return true;
+      $this->sessionManager = $sessionManager;
    }
 
    /**
@@ -91,7 +48,7 @@ final class Client
     * @param Session $session
     * @return array
     */
-   private function genSessionHeaders(Session $session)
+   private function buildRequestHeaders(Session $session)
    {
       $result = [];
       if ($session->getSkypeToken())
@@ -107,8 +64,9 @@ final class Client
    }
 
    /**
-    * Login on Oauth Microsoft web page and extract response data.
+    * Login on Oauth Microsoft web page and retries from Microsoft arguments LoginUrl, PPFT, PPSX, cookies.
     * @param Session $session
+    * @return OAuthMicrosoft
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
@@ -122,7 +80,7 @@ final class Client
             'client_id' => self::CLIENT_ID,
             'redirect_uri' => 'https://web.skype.com/username=' . $session->getAccount()->getUsername(),
          ],
-         'headers' => $this->genSessionHeaders($session),
+         'headers' => $this->buildRequestHeaders($session),
       ]);
       if (Response::HTTP_OK !== $response->getStatusCode())
       {
@@ -133,24 +91,26 @@ final class Client
       preg_match('/name="PPFT" id="(.+)" value="(.+)"/isU', $page, $ppft);
       preg_match("/t:\'(.+)\',A/isU", $page, $ppsx);
       $headers = $response->getHeaders();
-      if (!isset($loginURL[1]) || !isset($ppft[2]) || !isset($ppsx[1]) || empty($headers['set-cookie']))
+      if (empty($loginURL[1]) || empty($ppft[2]) || empty($ppsx[1]) || empty($headers['set-cookie']))
       {
          throw new  ClientOauthMicrosoftLoginException('Missing arguments');
       }
-      $oAuthMicrosoft = $session->getOAuthMicrosoft();
+      $oAuthMicrosoft = new OAuthMicrosoft();
       $oAuthMicrosoft->setLoginUrl((string)$loginURL[1]);
       $oAuthMicrosoft->setPPFT((string)$ppft[2]);
       $oAuthMicrosoft->setPPSX((string)$ppsx[1]);
-      foreach ($headers['set-cookie'] as $setCookie)
+      foreach ($headers['set-cookie'] as $cookie)
       {
-         $cookie = Cookie::fromString($setCookie);
-         $oAuthMicrosoft->addCookies($cookie);
+         $oAuthMicrosoft->addCookies(Cookie::fromString($cookie));
       }
+      return $oAuthMicrosoft;
    }
 
    /**
-    * Login on Oauth Microsoft Redirect web page and extract response data.
+    * Login on Oauth Microsoft Redirect web page and setup Microsoft arguments NAP, ANON, T.
+    * This method depends of @see loginOAuthMicrosoft retrieved values.
     * @param Session $session
+    * @return OAuthMicrosoftRedirect
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
@@ -179,7 +139,7 @@ final class Client
             'i21' => 0,
             'i13' => 0,
          ],
-         'headers' => array_merge($this->genSessionHeaders($session), [
+         'headers' => array_merge($this->buildRequestHeaders($session), [
             'Cookie' => $session->getOAuthMicrosoft()->getCookies(),
          ]),
       ]);
@@ -192,32 +152,34 @@ final class Client
       preg_match('/<input type="hidden" name="ANON" id="ANON" value="(.+)">/isU', $page, $ANON);
       preg_match('/<input type="hidden" name="t" id="t" value="(.+)">/isU', $page, $t);
       $headers = $response->getHeaders();
-      if (!isset($NAP[1]) || !isset($ANON[1]) || !isset($t[1]) || empty($headers['set-cookie']))
+      if (empty($NAP[1]) || empty($ANON[1]) || empty($t[1]) || empty($headers['set-cookie']))
       {
          throw new  ClientOauthMicrosoftRedirectLoginException('Missing arguments');
       }
-      $oAuthMicrosoftRedirect = $session->getOAuthMicrosoftRedirect();
-      $oAuthMicrosoftRedirect->setNAP($NAP[1]);
-      $oAuthMicrosoftRedirect->setANON($ANON[1]);
-      $oAuthMicrosoftRedirect->setT($t[1]);
-      foreach ($headers['set-cookie'] as $setCookie)
+      $oAuthMicrosoftRedirect = new OAuthMicrosoftRedirect();
+      $oAuthMicrosoftRedirect->setNAP((string)$NAP[1]);
+      $oAuthMicrosoftRedirect->setANON((string)$ANON[1]);
+      $oAuthMicrosoftRedirect->setT((string)$t[1]);
+      foreach ($headers['set-cookie'] as $cookie)
       {
-         $cookie = Cookie::fromString($setCookie);
-         $oAuthMicrosoftRedirect->addCookies($cookie);
+         $oAuthMicrosoftRedirect->addCookies(Cookie::fromString($cookie));
       }
+      return $oAuthMicrosoftRedirect;
    }
 
    /**
+    * Login on OAuth Skype and setup Skype argument T.
+    * This method depends of @see loginOAuthMicrosoftRedirect retrieved values.
     * @param Session $session
+    * @return OAuthSkype
+    * @throws ClientOauthSkypeLoginException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws ClientOauthSkypeLoginException
     */
    private function loginOauthSkype(Session $session)
    {
-
       $response = $this->httpClient->request('POST', 'https://lw.skype.com/login/oauth/proxy', [
          'query' => [
             'client_id' => self::CLIENT_ID,
@@ -228,7 +190,7 @@ final class Client
             'ANON' => $session->getOAuthMicrosoftRedirect()->getANON(),
             't' => $session->getOAuthMicrosoftRedirect()->getT(),
          ],
-         'headers' => array_merge($this->genSessionHeaders($session), [
+         'headers' => array_merge($this->buildRequestHeaders($session), [
             'Cookie' => $session->getOAuthMicrosoftRedirect()->getCookies(),
          ]),
       ]);
@@ -238,12 +200,136 @@ final class Client
       }
       $page = $response->getContent();
       preg_match('/<input type="hidden" name="t" value="(.+)"\/>/isU', $page, $t);
-      if (!isset($t[1]))
+      if (empty($t[1]))
       {
          throw new  ClientOauthSkypeLoginException('Missing arguments');
       }
-      $oAuthSkype = $session->getOAuthSkype();
-      $oAuthSkype->setT($t[1]);
+      $oAuthSkype = new OAuthSkype();
+      $oAuthSkype->setT((string)$t[1]);
+      return $oAuthSkype;
+   }
+
+   /**
+    * Login to the Skype and setup SkypeToken.
+    * This method depends of @see loginOauthSkype retrieved values.
+    * @param Session $session
+    * @return string
+    * @throws SessionException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   private function loginSkype(Session $session)
+   {
+      $response = $this->httpClient->request('POST', 'https://login.skype.com/login/microsoft', [
+         'query' => [
+            'client_id' => self::CLIENT_ID,
+            'redirect_uri' => 'https://web.skype.com/',
+         ],
+         'body' => [
+            't' => $session->getOAuthSkype()->getT(),
+            'site_name' => 'lw.skype.com',
+            'oauthPartner' => 999,
+            'form' => '',
+            'client_id' => self::CLIENT_ID,
+            'redirect_uri' => 'https://web.skype.com/'
+         ],
+      ]);
+      if (Response::HTTP_OK !== $response->getStatusCode())
+      {
+         throw new  SessionException('Incorrect status code');
+      }
+      $page = $response->getContent();
+      preg_match('/<input type="hidden" name="skypetoken" value="(.+)"\/>/isU', $page, $skypeToken);
+      if (empty($skypeToken[1]))
+      {
+         throw new  SessionException('Missing skypeToken');
+      }
+      $result = (string)$skypeToken[1];
+      return $result;
+   }
+
+   /**
+    * Register in the Skype and setup registrationToken.
+    * This method depends of @see loginSkype retrieved values.
+    * @param Session $session
+    * @return string
+    * @throws SessionException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * @throws ClientOauthMicrosoftLoginException
+    */
+   private function registerSkype(Session $session)
+   {
+      $response = $this->httpClient->request('POST', 'https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/endpoints', [
+         'body' => '{}',
+         'headers' => array_merge($this->buildRequestHeaders($session), [
+            'Cookie' => $session->getOAuthMicrosoft()->getCookies(),
+         ]),
+      ]);
+      if (Response::HTTP_OK !== $response->getStatusCode())
+      {
+         throw new  ClientOauthMicrosoftLoginException('Incorrect status code');
+      }
+      $headers = $response->getHeaders();
+      if (empty($headers['set-registrationtoken'][0]))
+      {
+         throw new SessionException('Missing registrationToken');
+      }
+      preg_match('/registrationToken=(.+);/isU', $headers['set-registrationtoken'][0], $registrationToken);
+      if (empty($registrationToken[1]))
+      {
+         throw new SessionException('Missing registrationToken');
+      }
+      $result = (string)$registrationToken[1];
+      return $result;
+   }
+
+   /**
+    * Login process consists from 2 parts: login to Microsoft & login to Skype.
+    * This method create/restore session and setup expire date for session and save to session storage.
+    * @param Account $account
+    * @throws ClientOauthMicrosoftLoginException
+    * @throws ClientOauthMicrosoftRedirectLoginException
+    * @throws ClientOauthSkypeLoginException
+    * @throws SessionException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * @throws exceptions\AccountCacheFileSaveException
+    * @throws exceptions\SessionDirCreateException
+    * @throws exceptions\SessionFileLoadException
+    * @throws exceptions\SessionFileRemoveException
+    */
+   public function login(Account $account)
+   {
+      $session = new Session($account);
+      $this->sessionManager->loadSession($session);
+
+      $oAuthMicrosoft = $this->loginOAuthMicrosoft($session);
+      $session->setOAuthMicrosoft($oAuthMicrosoft);
+
+      $oAuthMicrosoftRedirect = $this->loginOAuthMicrosoftRedirect($session);
+      $session->setOAuthMicrosoftRedirect($oAuthMicrosoftRedirect);
+
+      $oAuthSkype = $this->loginOauthSkype($session);
+      $session->setOAuthSkype($oAuthSkype);
+
+      $skypeToken = $this->loginSkype($session);
+      $session->setSkypeToken($skypeToken);
+
+      $registrationToken = $this->registerSkype($session);
+      $session->setRegistrationToken($registrationToken);
+
+      $now = DateTime::createFromFormat('U', time());
+      $now->modify('+6 hours');
+      $session->setExpiry($now);
+
+      $this->sessionManager->saveSession($session);
    }
 
    private function web($url, $mode = "GET", $post = [], $showHeaders = false, $follow = true, $customCookies = "", $customHeaders = [])
