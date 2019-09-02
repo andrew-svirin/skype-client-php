@@ -4,14 +4,14 @@
   "description": "PHP library for connect to Skype.",
   "keywords": [
     "skype",
-    "bot",
+    "client",
     "PHP"
   ],
   "version": "dev",
   "minimum-stability": "dev",
   "autoload": {
     "psr-4": {
-      "AndriySvirin\\SkypeClient\\": "src"
+      "AndrewSvirin\\SkypeClient\\": "src"
     }
   },
   "require": {
