@@ -120,12 +120,26 @@ class Session
    }
 
    /**
+    * Check if @see Session is New.
+    * @return bool
+    */
+   public function isNew()
+   {
+      $result = null === $this->expiry;
+      return $result;
+   }
+
+   /**
     * Check if @see Session is expired.
     * @param DateTime $now
     * @return bool
     */
-   public function isExpired(DateTime $now)
+   public function isExpired(DateTime $now = null)
    {
+      if (null === $now)
+      {
+         $now = DateTime::createFromFormat('U', time());
+      }
       $result = $now > $this->expiry;
       return $result;
    }

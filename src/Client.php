@@ -2,6 +2,7 @@
 
 namespace AndriySvirin\SkypeBot;
 
+use AndriySvirin\SkypeBot\exceptions\ClientException;
 use AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftLoginException;
 use AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftRedirectLoginException;
 use AndriySvirin\SkypeBot\exceptions\ClientOauthSkypeLoginException;
@@ -272,7 +273,7 @@ final class Client
       ]);
       if (Response::HTTP_OK !== $response->getStatusCode())
       {
-         throw new  ClientOauthMicrosoftLoginException('Incorrect status code');
+         throw new ClientOauthMicrosoftLoginException(sprintf('Incorrect status code %s', $response->getStatusCode()));
       }
       $headers = $response->getHeaders();
       if (empty($headers['set-registrationtoken'][0]))
@@ -292,6 +293,8 @@ final class Client
     * Login process consists from 2 parts: login to Microsoft & login to Skype.
     * This method create/restore session and setup expire date for session and save to session storage.
     * @param Account $account
+    * @param DateTime|null $now
+    * @return Session
     * @throws ClientOauthMicrosoftLoginException
     * @throws ClientOauthMicrosoftRedirectLoginException
     * @throws ClientOauthSkypeLoginException
@@ -305,31 +308,50 @@ final class Client
     * @throws exceptions\SessionFileLoadException
     * @throws exceptions\SessionFileRemoveException
     */
-   public function login(Account $account)
+   public function login(Account $account, DateTime $now = null)
    {
-      $session = new Session($account);
-      $this->sessionManager->loadSession($session);
+      $session = $this->sessionManager->loadAccountSession($account);
+      if ($session->isNew())
+      {
+         $oAuthMicrosoft = $this->loginOAuthMicrosoft($session);
+         $session->setOAuthMicrosoft($oAuthMicrosoft);
+         $oAuthMicrosoftRedirect = $this->loginOAuthMicrosoftRedirect($session);
+         $session->setOAuthMicrosoftRedirect($oAuthMicrosoftRedirect);
+         $oAuthSkype = $this->loginOauthSkype($session);
+         $session->setOAuthSkype($oAuthSkype);
+         $skypeToken = $this->loginSkype($session);
+         $session->setSkypeToken($skypeToken);
+         $registrationToken = $this->registerSkype($session);
+         $session->setRegistrationToken($registrationToken);
+         $this->sessionManager->saveSession($session);
+      }
+      elseif ($session->isExpired($now))
+      {
+         $this->sessionManager->destroyAccountSession($session);
+      }
+      return $session;
+   }
 
-      $oAuthMicrosoft = $this->loginOAuthMicrosoft($session);
-      $session->setOAuthMicrosoft($oAuthMicrosoft);
-
-      $oAuthMicrosoftRedirect = $this->loginOAuthMicrosoftRedirect($session);
-      $session->setOAuthMicrosoftRedirect($oAuthMicrosoftRedirect);
-
-      $oAuthSkype = $this->loginOauthSkype($session);
-      $session->setOAuthSkype($oAuthSkype);
-
-      $skypeToken = $this->loginSkype($session);
-      $session->setSkypeToken($skypeToken);
-
-      $registrationToken = $this->registerSkype($session);
-      $session->setRegistrationToken($registrationToken);
-
-      $now = DateTime::createFromFormat('U', time());
-      $now->modify('+6 hours');
-      $session->setExpiry($now);
-
-      $this->sessionManager->saveSession($session);
+   /**
+    * @param Session $session
+    * @return array
+    * @throws ClientException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   public function loadMyProperties(Session $session)
+   {
+      $response = $this->httpClient->request('GET', 'https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/properties', [
+         'headers' => $this->buildRequestHeaders($session),
+      ]);
+      if (Response::HTTP_OK !== $response->getStatusCode())
+      {
+         throw new ClientException(sprintf('Incorrect status code %s', $response->getStatusCode()));
+      }
+      $result = json_decode($response->getContent(), true);
+      return $result;
    }
 
    private function web($url, $mode = "GET", $post = [], $showHeaders = false, $follow = true, $customCookies = "", $customHeaders = [])
