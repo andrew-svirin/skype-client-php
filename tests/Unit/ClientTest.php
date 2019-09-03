@@ -1,10 +1,10 @@
 <?php
 
-namespace AndriySvirin\tests\Unit;
+namespace AndrewSvirin\tests\Unit;
 
-use AndriySvirin\SkypeBot\Client;
-use AndriySvirin\SkypeBot\models\Account;
-use AndriySvirin\SkypeBot\services\SessionManager;
+use AndrewSvirin\SkypeClient\SkypeClient;
+use AndrewSvirin\SkypeClient\models\Account;
+use AndrewSvirin\SkypeClient\services\SessionManager;
 use PHPUnit\Framework\TestCase;
 
 final class ClientTest extends TestCase
@@ -14,12 +14,7 @@ final class ClientTest extends TestCase
    private $cacheDir = __DIR__ . '/../_cache';
 
    /**
-    * @var Account
-    */
-   private $account;
-
-   /**
-    * @var Client
+    * @var SkypeClient
     */
    private $client;
 
@@ -28,55 +23,132 @@ final class ClientTest extends TestCase
     */
    public function setUp()
    {
-      $credentials = unserialize(file_get_contents($this->dataDir . '/credentials.ser'));
-      $username = $credentials['user']['username'];
-      $password = base64_decode($credentials['user']['password']);
-      $this->account = new Account($username, $password);
       $sessionManager = new SessionManager($this->cacheDir . '/skype-client-php');
-      $this->client = new Client($sessionManager);
+      $this->client = new SkypeClient($sessionManager);
    }
 
    /**
-    * @return \AndriySvirin\SkypeBot\models\Session
-    * @throws \AndriySvirin\SkypeBot\exceptions\AccountCacheFileSaveException
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionDirCreateException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionFileLoadException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionFileRemoveException
+    * @group login
+    * @dataProvider accountProvider
+    * @param string $username
+    * @param string $password
+    * @return \AndrewSvirin\SkypeClient\models\Session
+    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
     */
-   public function testLogin()
+   public function testLogin(string $username, string $password)
    {
-      $session = $this->client->login($this->account);
+      $account = new Account($username, $password);
+      $session = $this->client->login($account);
       $this->assertNotEmpty($session);
       return $session;
    }
 
    /**
-    * @throws \AndriySvirin\SkypeBot\exceptions\AccountCacheFileSaveException
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionDirCreateException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionFileLoadException
-    * @throws \AndriySvirin\SkypeBot\exceptions\SessionFileRemoveException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws \AndriySvirin\SkypeBot\exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
     */
    public function testMyProperties()
    {
-      $session = $this->testLogin();
+      $account = $this->getAccount('user_1');
+      $session = $this->testLogin($account->getUsername(), $account->getPassword());
       $this->assertNotEmpty($this->client->loadMyProperties($session));
+   }
+
+   /**
+    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   public function testMyInvites()
+   {
+      $account = $this->getAccount('user_1');
+      $session = $this->testLogin($account->getUsername(), $account->getPassword());
+      $this->assertArrayHasKey('invite_list', $this->client->loadMyInvites($session));
+   }
+
+   /**
+    * @group sm
+    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
+    */
+   public function testSendMessage()
+   {
+      $account1 = $this->getAccount('user_1');
+      $account2 = $this->getAccount('user_2');
+      $session2 = $this->testLogin($account2->getUsername(), $account2->getPassword());
+      $this->client->sendMessage($session2, $account1->getUsername());
+   }
+
+   /**
+    * Skype Accounts credentials data provider.
+    * @return array
+    */
+   public function accountProvider()
+   {
+      $credentials = json_decode(file_get_contents($this->dataDir . '/credentials.json'), true);
+      $accounts = [];
+      foreach ($credentials as $user => $credential)
+      {
+         $accounts[$user] = [
+            'username' => base64_decode($credential['username']),
+            'password' => base64_decode($credential['password']),
+         ];
+      }
+      return $accounts;
+   }
+
+   /**
+    * Skype Account credentials for user.
+    * @param string $user
+    * @return Account
+    */
+   public function getAccount(string $user): Account
+   {
+      $accountProvider = $this->accountProvider();
+      $credentials = $accountProvider[$user];
+      return new Account($credentials['username'], $credentials['password']);
    }
 
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace AndriySvirin\SkypeBot\models;
+namespace AndrewSvirin\SkypeClient\models;
 
 use DateTime;
 
@@ -18,25 +18,21 @@ class Session
    private $account;
 
    /**
-    * TODO: Skype Token needs for...
-    *
-    * @var string
-    */
-   private $skypeToken;
-
-   /**
-    * TODO: Registration Token needs for...
-    *
-    * @var string
-    */
-   private $registrationToken;
-
-   /**
     * DateTime until the cache is valid.
     *
     * @var DateTime
     */
    private $expiry;
+
+   /**
+    * @var SkypeToken
+    */
+   private $skypeToken;
+
+   /**
+    * @var RegistrationToken
+    */
+   private $registrationToken;
 
    /**
     * @var OAuthMicrosoft
@@ -53,11 +49,6 @@ class Session
     */
    private $oAuthSkype;
 
-   /**
-    * @var Skype
-    */
-   private $skype;
-
    public function __construct(Account $account)
    {
       $this->account = $account;
@@ -69,38 +60,6 @@ class Session
    public function getAccount()
    {
       return $this->account;
-   }
-
-   /**
-    * @return string
-    */
-   public function getSkypeToken()
-   {
-      return $this->skypeToken;
-   }
-
-   /**
-    * @param string $skypeToken
-    */
-   public function setSkypeToken($skypeToken)
-   {
-      $this->skypeToken = $skypeToken;
-   }
-
-   /**
-    * @return string
-    */
-   public function getRegistrationToken()
-   {
-      return $this->registrationToken;
-   }
-
-   /**
-    * @param string $registrationToken
-    */
-   public function setRegistrationToken($registrationToken)
-   {
-      $this->registrationToken = $registrationToken;
    }
 
    /**
@@ -154,6 +113,32 @@ class Session
       $this->registrationToken = null;
    }
 
+   public function getSkypeToken(): ?SkypeToken
+   {
+      return $this->skypeToken;
+   }
+
+   public function setSkypeToken(SkypeToken $skypeToken)
+   {
+      $this->skypeToken = $skypeToken;
+   }
+
+   /**
+    * @return RegistrationToken
+    */
+   public function getRegistrationToken(): ?RegistrationToken
+   {
+      return $this->registrationToken;
+   }
+
+   /**
+    * @param RegistrationToken $registrationToken
+    */
+   public function setRegistrationToken(RegistrationToken $registrationToken)
+   {
+      $this->registrationToken = $registrationToken;
+   }
+
    /**
     * @return OAuthMicrosoft
     */
@@ -200,19 +185,6 @@ class Session
    public function setOAuthSkype(OAuthSkype $oAuthSkype)
    {
       $this->oAuthSkype = $oAuthSkype;
-   }
-
-   /**
-    * Lazy loading @see Skype instance by demand.
-    * @return Skype
-    */
-   public function getSkype()
-   {
-      if (null === $this->skype)
-      {
-         $this->skype = new Skype();
-      }
-      return $this->skype;
    }
 
 }

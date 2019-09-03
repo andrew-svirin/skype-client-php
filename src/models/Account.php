@@ -1,6 +1,6 @@
 <?php
 
-namespace AndriySvirin\SkypeBot\models;
+namespace AndrewSvirin\SkypeClient\models;
 
 /**
  * Common account class that holds basic information.

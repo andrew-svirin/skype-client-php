@@ -8,14 +8,13 @@
     "PHP"
   ],
   "version": "dev",
-  "minimum-stability": "dev",
   "autoload": {
     "psr-4": {
       "AndrewSvirin\\SkypeClient\\": "src"
     }
   },
   "require": {
-    "php": ">=7.0",
+    "php": ">=7.2",
     "ext-json": "*",
     "symfony/http-client": "4.*",
     "symfony/http-foundation": "4.*"

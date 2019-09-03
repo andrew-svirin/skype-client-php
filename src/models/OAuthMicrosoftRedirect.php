@@ -1,6 +1,6 @@
 <?php
 
-namespace AndriySvirin\SkypeBot\models;
+namespace AndrewSvirin\SkypeClient\models;
 
 use Symfony\Component\HttpFoundation\Cookie;
 

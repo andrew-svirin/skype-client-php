@@ -1,13 +1,14 @@
 <?php
 
-namespace AndriySvirin\SkypeBot\services;
+namespace AndrewSvirin\SkypeClient\services;
 
-use AndriySvirin\SkypeBot\exceptions\SessionDirCreateException;
-use AndriySvirin\SkypeBot\exceptions\SessionFileLoadException;
-use AndriySvirin\SkypeBot\exceptions\AccountCacheFileSaveException;
-use AndriySvirin\SkypeBot\exceptions\SessionFileRemoveException;
-use AndriySvirin\SkypeBot\models\Account;
-use AndriySvirin\SkypeBot\models\Session;
+use AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException;
+use AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException;
+use AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException;
+use AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException;
+use AndrewSvirin\SkypeClient\factories\SessionFactory;
+use AndrewSvirin\SkypeClient\models\Account;
+use AndrewSvirin\SkypeClient\models\Session;
 use DateTime;
 
 /**
@@ -21,13 +22,6 @@ class SessionManager
     * Algo to recognize cache name.
     */
    const CACHE_ALGO = 'sha512';
-
-   /**
-    * Fields for cached data.
-    */
-   const FIELD_SKYPE_TOKEN = 'skypeToken';
-   const FIELD_REGISTRATION_TOKEN = 'registrationToken';
-   const FIELD_EXPIRY = 'expiry';
 
    /**
     * Store caches for accounts.
@@ -56,13 +50,8 @@ class SessionManager
       }
       $now->modify('+6 hours');
       $session->setExpiry($now);
-      $sessionData = [
-         self::FIELD_SKYPE_TOKEN => $session->getSkypeToken(),
-         self::FIELD_REGISTRATION_TOKEN => $session->getRegistrationToken(),
-         self::FIELD_EXPIRY => $session->getExpiry()->format('U'),
-      ];
       $sessionFilePath = $this->buildAccountSessionFilePath($session->getAccount());
-      if (false === file_put_contents($sessionFilePath, serialize($sessionData)))
+      if (false === file_put_contents($sessionFilePath, json_encode(SessionFactory::buildDataFromSession($session), JSON_PRETTY_PRINT)))
       {
          throw new AccountCacheFileSaveException($sessionFilePath);
       }
@@ -87,14 +76,11 @@ class SessionManager
       // Load session data from file.
       if (file_exists($sessionFilePath))
       {
-         if (false === ($sessionContent = file_get_contents($sessionFilePath)))
+         if (!($sessionContent = file_get_contents($sessionFilePath)) || !($data = json_decode($sessionContent, true)))
          {
             throw new SessionFileLoadException($sessionFilePath);
          }
-         $sessionData = unserialize($sessionContent);
-         $session->setSkypeToken((string)$sessionData[self::FIELD_SKYPE_TOKEN]);
-         $session->setRegistrationToken((string)$sessionData[self::FIELD_REGISTRATION_TOKEN]);
-         $session->setExpiry(DateTime::createFromFormat('U', (int)$sessionData[self::FIELD_EXPIRY]));
+         $session = SessionFactory::buildSessionFromData($account, $data);
       }
       return $session;
    }

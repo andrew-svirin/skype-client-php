@@ -1,6 +1,6 @@
 <?php
 
-namespace AndriySvirin\SkypeBot\models;
+namespace AndrewSvirin\SkypeClient\models;
 
 /**
  * Property for class @see Session that holds data retrieved from OAuth Skype.
@@ -27,6 +27,5 @@ class OAuthSkype
    {
       $this->t = $value;
    }
-
 
 }

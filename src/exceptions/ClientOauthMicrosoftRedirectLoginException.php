@@ -1,6 +1,6 @@
 <?php
 
-namespace AndriySvirin\SkypeBot\exceptions;
+namespace AndrewSvirin\SkypeClient\exceptions;
 
 class ClientOauthMicrosoftRedirectLoginException extends \Exception
 {
