@@ -11,14 +11,11 @@ use DateTime;
  */
 class SessionFactory
 {
-   /**
-    * Fields for cached data.
-    */
+
    const FIELD_SKYPE_ACCOUNT = 'account';
    const FIELD_SKYPE_TOKEN = 'skypeToken';
    const FIELD_REGISTRATION_TOKEN = 'registrationToken';
    const FIELD_EXPIRY = 'expiry';
-
 
    /**
     * Produce Session from data array.
@@ -50,4 +47,5 @@ class SessionFactory
       ];
       return $result;
    }
+
 }

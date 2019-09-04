@@ -2,7 +2,6 @@
 
 namespace AndrewSvirin\SkypeClient\factories;
 
-use AndrewSvirin\SkypeClient\models\RegistrationToken;
 use AndrewSvirin\SkypeClient\models\SkypeAccount;
 
 /**
@@ -36,4 +35,5 @@ class SkypeAccountFactory
       ];
       return $result;
    }
+
 }

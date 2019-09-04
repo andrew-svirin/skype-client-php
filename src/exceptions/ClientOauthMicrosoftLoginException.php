@@ -10,4 +10,5 @@ class ClientOauthMicrosoftLoginException extends \Exception
    {
       parent::__construct(sprintf(self::MESSAGE, $reason));
    }
+
 }

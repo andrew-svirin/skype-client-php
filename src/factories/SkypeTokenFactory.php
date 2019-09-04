@@ -34,4 +34,5 @@ class SkypeTokenFactory
       ];
       return $result;
    }
+
 }

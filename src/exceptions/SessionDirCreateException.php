@@ -10,4 +10,5 @@ class SessionDirCreateException extends \Exception
    {
       parent::__construct(sprintf(self::MESSAGE, $dir));
    }
+
 }

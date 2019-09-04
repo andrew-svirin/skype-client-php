@@ -10,4 +10,5 @@ class SessionFileRemoveException extends \Exception
    {
       parent::__construct(sprintf(self::MESSAGE, $path));
    }
+
 }
