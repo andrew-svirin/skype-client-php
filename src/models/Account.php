@@ -23,11 +23,11 @@ class Account
    private $password;
 
    /**
-    * Skype Account.
+    * Conversation interface for account.
     *
-    * @var SkypeAccount
+    * @var Conversation
     */
-   private $skypeAccount;
+   private $conversation;
 
    public function __construct(string $username, string $password)
    {
@@ -52,19 +52,19 @@ class Account
    }
 
    /**
-    * @param SkypeAccount $skypeAccount
+    * @param Conversation $conversation
     */
-   public function setSkypeAccount(SkypeAccount $skypeAccount)
+   public function setConversation(Conversation $conversation)
    {
-      $this->skypeAccount = $skypeAccount;
+      $this->conversation = $conversation;
    }
 
    /**
-    * @return SkypeAccount|null
+    * @return Conversation|null
     */
-   public function getSkypeAccount(): ?SkypeAccount
+   public function getConversation(): ?Conversation
    {
-      return $this->skypeAccount;
+      return $this->conversation;
    }
 
 }

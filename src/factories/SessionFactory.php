@@ -12,7 +12,7 @@ use DateTime;
 class SessionFactory
 {
 
-   const FIELD_SKYPE_ACCOUNT = 'account';
+   const FIELD_CONVERSATION = 'conversation';
    const FIELD_SKYPE_TOKEN = 'skypeToken';
    const FIELD_REGISTRATION_TOKEN = 'registrationToken';
    const FIELD_EXPIRY = 'expiry';
@@ -26,7 +26,7 @@ class SessionFactory
    public static function buildSessionFromData(Account $account, array $data): Session
    {
       $result = new Session($account);
-      $account->setSkypeAccount(SkypeAccountFactory::buildSkypeAccountFromData($data[self::FIELD_SKYPE_ACCOUNT]));
+      $account->setConversation(ConversationFactory::buildConversationFromData($data[self::FIELD_CONVERSATION]));
       $result->setSkypeToken(SkypeTokenFactory::buildSkypeTokenFromData($data[self::FIELD_SKYPE_TOKEN]));
       $result->setRegistrationToken(RegistrationTokenFactory::buildRegistrationTokenFromData($data[self::FIELD_REGISTRATION_TOKEN]));
       $result->setExpiry(DateTime::createFromFormat('U', (int)$data[self::FIELD_EXPIRY]));
@@ -40,7 +40,7 @@ class SessionFactory
    public static function buildDataFromSession(Session $session): array
    {
       $result = [
-         self::FIELD_SKYPE_ACCOUNT => SkypeAccountFactory::buildDataFromSkypeAccount($session->getAccount()->getSkypeAccount()),
+         self::FIELD_CONVERSATION => ConversationFactory::buildDataFromConversation($session->getAccount()->getConversation()),
          self::FIELD_SKYPE_TOKEN => SkypeTokenFactory::buildDataFromSkypeToken($session->getSkypeToken()),
          self::FIELD_REGISTRATION_TOKEN => RegistrationTokenFactory::buildDataFromRegistrationToken($session->getRegistrationToken()),
          self::FIELD_EXPIRY => $session->getExpiry()->format('U'),

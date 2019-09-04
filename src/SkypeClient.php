@@ -12,7 +12,7 @@ use AndrewSvirin\SkypeClient\models\OAuthMicrosoftRedirect;
 use AndrewSvirin\SkypeClient\models\OAuthSkype;
 use AndrewSvirin\SkypeClient\models\RegistrationToken;
 use AndrewSvirin\SkypeClient\models\Session;
-use AndrewSvirin\SkypeClient\models\SkypeAccount;
+use AndrewSvirin\SkypeClient\models\Conversation;
 use AndrewSvirin\SkypeClient\models\SkypeToken;
 use AndrewSvirin\SkypeClient\services\SessionManager;
 use DateTime;
@@ -286,7 +286,7 @@ final class SkypeClient
     * @throws exceptions\SessionFileLoadException
     * @throws exceptions\SessionFileRemoveException
     */
-   public function login(Account $account, DateTime $now = null)
+   public function login(Account $account, DateTime $now = null): Session
    {
       $session = $this->sessionManager->loadAccountSession($account);
       if ($session->isNew())
@@ -302,8 +302,8 @@ final class SkypeClient
          $registrationToken = $this->loginRegistrationToken($session);
          $session->setRegistrationToken($registrationToken);
          $profile = $this->loadMyProfile($session);
-         $skypeAccount = new SkypeAccount($profile['username'], $profile['firstname'] . ' ' . $profile['lastname']);
-         $account->setSkypeAccount($skypeAccount);
+         $conversation = new Conversation($profile['username'], $profile['firstname'] . ' ' . $profile['lastname']);
+         $account->setConversation($conversation);
          $this->sessionManager->saveSession($session);
       }
       elseif ($session->isExpired($now))
@@ -322,7 +322,7 @@ final class SkypeClient
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
     */
-   public function loadMyProperties(Session $session)
+   public function loadMyProperties(Session $session): array
    {
       $url = sprintf('%s/users/ME/properties', $session->getRegistrationToken()->getMessengerUrl());
       $response = $this->request('GET', $url, [
@@ -341,7 +341,7 @@ final class SkypeClient
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
     */
-   public function loadMyProfile(Session $session)
+   public function loadMyProfile(Session $session): array
    {
       $response = $this->request('GET', 'https://api.skype.com/users/self/profile', [
          'authorization_session' => $session,
@@ -369,9 +369,9 @@ final class SkypeClient
    }
 
    /**
-    * Send message from skype Account in the Session to Skype Account in the arguments.
+    * Send message from skype Account in the Session to Skype Account or Skype Group in the arguments.
     * @param Session $session
-    * @param SkypeAccount $skypeAccount
+    * @param Conversation $conversation
     * @param string $content
     * @return int|mixed
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
@@ -379,15 +379,14 @@ final class SkypeClient
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
     */
-   public function sendMessage(Session $session, SkypeAccount $skypeAccount, $content)
+   public function sendMessage(Session $session, Conversation $conversation, $content): array
    {
       $dateTime = DateTime::createFromFormat('0.u00 U', microtime());
-      $mode = strstr($skypeAccount->getUsername(), 'thread.skype') ? 19 : 8;
       $url = sprintf(
          '%s/users/ME/conversations/%d:%s/messages',
          $session->getRegistrationToken()->getMessengerUrl(),
-         $mode,
-         $skypeAccount->getUsername()
+         $conversation->getMode(),
+         $conversation->getName()
       );
       $body = [
          'clientmessageid' => $dateTime->format('Uu'),
@@ -395,9 +394,98 @@ final class SkypeClient
          'content' => $content,
          'messagetype' => 'RichText',
          'contenttype' => 'text',
-         'imdisplayname' => $session->getAccount()->getSkypeAccount()->getFullName(),
-         'receiverdisplayname' => $skypeAccount->getFullName(),
+         'imdisplayname' => $session->getAccount()->getConversation()->getLabel(),
+         'receiverdisplayname' => $conversation->getLabel(),
       ];
+      $response = $this->request('POST', $url, [
+         'body' => json_encode($body),
+         'authorization_session' => $session,
+         'headers' => [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+         ],
+      ]);
+      $result = json_decode($response->getContent(), true);
+      return $result;
+   }
+
+   /**
+    * Load messages for Account from Conversation to Another Account or in the Group.
+    * @param Session $session
+    * @param Conversation $conversation
+    * @param int $size Amount of messages.
+    * @return array
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   public function loadMessages(Session $session, Conversation $conversation, $size = 100): array
+   {
+      if ($size > 199 or $size < 1)
+      {
+         $size = 199;
+      }
+      $url = sprintf(
+         '%s/users/ME/conversations/%d:%s/messages',
+         $session->getRegistrationToken()->getMessengerUrl(),
+         $conversation->getMode(),
+         $conversation->getName()
+      );
+      $response = $this->request('GET', $url, [
+         'query' => [
+            'startTime' => 0,
+            'pageSize' => $size,
+            'view' => 'msnp24Equivalent',
+            'targetType' => 'Passport|Skype|Lync|Thread',
+         ],
+         'authorization_session' => $session,
+         'headers' => [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+         ],
+      ]);
+      $result = json_decode($response->getContent(), true);
+      return $result;
+   }
+
+   /**
+    * Create Group with Admin from Session and Members from arguments.
+    * @param Session $session
+    * @param string $topic
+    * @param Conversation[] $members
+    * @return array
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   public function createGroup(Session $session, string $topic, array $members = []): array
+   {
+      $conversation = $session->getAccount()->getConversation();
+      $body = [
+         'members' => [
+            [
+               'id' => $conversation->getMode() . ':' . $conversation->getName(),
+               'role' => 'Admin',
+            ]
+         ],
+         'properties' => [
+            'historydisclosed' => true,
+            'topic' => $topic,
+         ],
+      ];
+      foreach ($members as $member)
+      {
+         $body['members'][] = [
+            'id' => $member->getMode() . ':' . $member->getName(),
+            'role' => 'User',
+         ];
+      }
+      $url = sprintf(
+         '%s/threads',
+         $session->getRegistrationToken()->getMessengerUrl()
+      );
       $response = $this->request('POST', $url, [
          'body' => json_encode($body),
          'authorization_session' => $session,
@@ -507,73 +595,73 @@ final class SkypeClient
 //      return isset($data["code"]) && $data["code"] == 20100;
    }
 
-   private function web($url, $mode = "GET", $post = [], $showHeaders = false, $follow = true, $customCookies = "", $customHeaders = [])
-   {
+//   private function web($url, $mode = "GET", $post = [], $showHeaders = false, $follow = true, $customCookies = "", $customHeaders = [])
+//   {
+//
+//      if (!function_exists("curl_init"))
+//         exit(trigger_error("Skype : cURL is required", E_USER_WARNING));
+//
+//      if (!empty($post) && is_array($post))
+//         $post = http_build_query($post);
+//
+//      if ($this->logged && time() >= $this->expiry)
+//      {
+//         $this->logged = false;
+//         $this->login();
+//      }
+//
+//      $headers = $customHeaders;
+//      if (isset($this->skypeToken))
+//      {
+//         $headers[] = "X-Skypetoken: {$this->skypeToken}";
+//         $headers[] = "Authentication: skypetoken={$this->skypeToken}";
+//      }
+//
+//      if (isset($this->registrationToken))
+//         $headers[] = "RegistrationToken: registrationToken={$this->registrationToken}";
+//
+//      $curl = curl_init();
+//
+//      curl_setopt($curl, CURLOPT_URL, $url);
+//      if (!empty($headers))
+//         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+//      curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $mode);
+//      if (!empty($post))
+//      {
+//         curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
+//      }
+//      if ($customCookies)
+//         curl_setopt($curl, CURLOPT_COOKIE, $customCookies);
+//      curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+//      curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+//      curl_setopt($curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
+//      curl_setopt($curl, CURLOPT_HEADER, $showHeaders);
+//      curl_setopt($curl, CURLOPT_FOLLOWLOCATION, $follow);
+//      curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+//      $result = curl_exec($curl);
+//
+//      curl_close($curl);
+//      return $result;
+//   }
 
-      if (!function_exists("curl_init"))
-         exit(trigger_error("Skype : cURL is required", E_USER_WARNING));
+//   public function logout()
+//   {
+//      if (!$this->logged)
+//         return true;
+//
+//      unlink("{$this->folder}/auth_{$this->username}");
+//      unset($this->skypeToken);
+//      unset($this->registrationToken);
+//
+//      return true;
+//   }
 
-      if (!empty($post) && is_array($post))
-         $post = http_build_query($post);
-
-      if ($this->logged && time() >= $this->expiry)
-      {
-         $this->logged = false;
-         $this->login();
-      }
-
-      $headers = $customHeaders;
-      if (isset($this->skypeToken))
-      {
-         $headers[] = "X-Skypetoken: {$this->skypeToken}";
-         $headers[] = "Authentication: skypetoken={$this->skypeToken}";
-      }
-
-      if (isset($this->registrationToken))
-         $headers[] = "RegistrationToken: registrationToken={$this->registrationToken}";
-
-      $curl = curl_init();
-
-      curl_setopt($curl, CURLOPT_URL, $url);
-      if (!empty($headers))
-         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-      curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $mode);
-      if (!empty($post))
-      {
-         curl_setopt($curl, CURLOPT_POSTFIELDS, $post);
-      }
-      if ($customCookies)
-         curl_setopt($curl, CURLOPT_COOKIE, $customCookies);
-      curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
-      curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
-      curl_setopt($curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
-      curl_setopt($curl, CURLOPT_HEADER, $showHeaders);
-      curl_setopt($curl, CURLOPT_FOLLOWLOCATION, $follow);
-      curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-      $result = curl_exec($curl);
-
-      curl_close($curl);
-      return $result;
-   }
-
-   public function logout()
-   {
-      if (!$this->logged)
-         return true;
-
-      unlink("{$this->folder}/auth_{$this->username}");
-      unset($this->skypeToken);
-      unset($this->registrationToken);
-
-      return true;
-   }
-
-   private function URLToUser($url)
-   {
-      $url = explode(":", $url, 2);
-
-      return end($url);
-   }
+//   private function URLToUser($url)
+//   {
+//      $url = explode(":", $url, 2);
+//
+//      return end($url);
+//   }
 
 //   public function sendMessage($user, $message)
 //   {
@@ -593,37 +681,26 @@ final class SkypeClient
 //      return isset($req["OriginalArrivalTime"]) ? $messageID : 0;
 //   }
 
-   public function getMessagesList($user, $size = 100)
-   {
-      $user = $this->URLtoUser($user);
-      if ($size > 199 or $size < 1)
-         $size = 199;
-      $mode = strstr($user, "thread.skype") ? 19 : 8;
 
-      $req = json_decode($this->web("https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/conversations/$mode:$user/messages?startTime=0&pageSize=$size&view=msnp24Equivalent&targetType=Passport|Skype|Lync|Thread"), true);
-
-      return !isset($req["message"]) ? $req["messages"] : [];
-   }
-
-   public function createGroup($users = [], $topic = "")
-   {
-      $users = [];
-
-      foreach ($users as $user)
-         $members["members"][] = ["id" => "8:" . $this->URLtoUser($user), "role" => "User"];
-
-      $members["members"][] = ["id" => "8:{$this->username}", "role" => "Admin"];
-
-      $req = $this->web("https://bn2-client-s.gateway.messenger.live.com/v1/threads", "POST", json_encode($members), true);
-      preg_match("`19\:(.+)\@thread.skype`isU", $req, $group);
-
-      $group = isset($group[1]) ? "{$group[1]}@thread.skype" : "";
-
-      if (!empty($topic) && !empty($group))
-         $this->setGroupTopic($group, $topic);
-
-      return $group;
-   }
+//   public function createGroup($users = [], $topic = "")
+//   {
+//      $users = [];
+//
+//      foreach ($users as $user)
+//         $members["members"][] = ["id" => "8:" . $this->URLtoUser($user), "role" => "User"];
+//
+//      $members["members"][] = ["id" => "8:{$this->username}", "role" => "Admin"];
+//
+//      $req = $this->web("https://bn2-client-s.gateway.messenger.live.com/v1/threads", "POST", json_encode($members), true);
+//      preg_match("`19\:(.+)\@thread.skype`isU", $req, $group);
+//
+//      $group = isset($group[1]) ? "{$group[1]}@thread.skype" : "";
+//
+//      if (!empty($topic) && !empty($group))
+//         $this->setGroupTopic($group, $topic);
+//
+//      return $group;
+//   }
 
    public function setGroupTopic($group, $topic)
    {
@@ -700,12 +777,12 @@ final class SkypeClient
       return !empty($req) ? $req : [];
    }
 
-   public function readMyProfile()
-   {
-      $req = json_decode($this->web("https://api.skype.com/users/self/profile"), true);
-
-      return !empty($req) ? $req : [];
-   }
+//   public function readMyProfile()
+//   {
+//      $req = json_decode($this->web("https://api.skype.com/users/self/profile"), true);
+//
+//      return !empty($req) ? $req : [];
+//   }
 
    public function searchSomeone($username)
    {
