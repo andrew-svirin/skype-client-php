@@ -11,6 +11,7 @@ class RegistrationTokenFactory
 {
 
    const FIELD_REGISTRATION_TOKEN = 'registrationToken';
+   const FIELD_MESSENGER_URL = 'response';
    const FIELD_RESPONSE = 'response';
 
    /**
@@ -21,6 +22,7 @@ class RegistrationTokenFactory
    {
       $result = new RegistrationToken();
       $result->setRegistrationToken($data[self::FIELD_REGISTRATION_TOKEN]);
+      $result->setMessengerUrl($data[self::FIELD_MESSENGER_URL]);
       return $result;
    }
 
@@ -33,6 +35,7 @@ class RegistrationTokenFactory
       $result = [
          self::FIELD_REGISTRATION_TOKEN => $registrationToken->getRegistrationToken(),
          self::FIELD_RESPONSE => $registrationToken->getResponse(),
+         self::FIELD_MESSENGER_URL => $registrationToken->getMessengerUrl(),
       ];
       return $result;
    }

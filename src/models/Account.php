@@ -22,6 +22,13 @@ class Account
     */
    private $password;
 
+   /**
+    * Skype Account.
+    *
+    * @var SkypeAccount
+    */
+   private $skypeAccount;
+
    public function __construct(string $username, string $password)
    {
       $this->username = $username;
@@ -42,6 +49,22 @@ class Account
    public function getPassword(): string
    {
       return $this->password;
+   }
+
+   /**
+    * @param SkypeAccount $skypeAccount
+    */
+   public function setSkypeAccount(SkypeAccount $skypeAccount)
+   {
+      $this->skypeAccount = $skypeAccount;
+   }
+
+   /**
+    * @return SkypeAccount|null
+    */
+   public function getSkypeAccount(): ?SkypeAccount
+   {
+      return $this->skypeAccount;
    }
 
 }

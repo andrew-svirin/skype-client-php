@@ -2,7 +2,6 @@
 
 namespace AndrewSvirin\SkypeClient;
 
-use AndrewSvirin\SkypeClient\exceptions\ClientException;
 use AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException;
 use AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException;
 use AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException;
@@ -13,18 +12,16 @@ use AndrewSvirin\SkypeClient\models\OAuthMicrosoftRedirect;
 use AndrewSvirin\SkypeClient\models\OAuthSkype;
 use AndrewSvirin\SkypeClient\models\RegistrationToken;
 use AndrewSvirin\SkypeClient\models\Session;
+use AndrewSvirin\SkypeClient\models\SkypeAccount;
 use AndrewSvirin\SkypeClient\models\SkypeToken;
 use AndrewSvirin\SkypeClient\services\SessionManager;
 use DateTime;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Cookie;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final class SkypeClient
 {
-
-   const CLIENT_ID = 578134;
 
    /**
     * @var HttpClientInterface
@@ -36,34 +33,21 @@ final class SkypeClient
     */
    private $sessionManager;
 
+   /**
+    * @var int
+    */
+   private $clientId;
+
    public function __construct(SessionManager $sessionManager)
    {
+      $this->clientId = 578134;
       $this->httpClient = HttpClient::create([
          'headers' => [
             'User-Agent' => 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
+            'Referer' => 'https://web.skype.com/',
          ],
       ]);
       $this->sessionManager = $sessionManager;
-   }
-
-   /**
-    * Build session headers for http requests.
-    * @param Session $session
-    * @return array
-    */
-   private function buildRequestHeaders(Session $session)
-   {
-      $result = [];
-      if ($session->getSkypeToken())
-      {
-         $result['X-Skypetoken'] = $session->getSkypeToken()->getSkypeToken();
-         $result['Authentication'] = 'skypetoken=' . $session->getSkypeToken()->getSkypeToken();
-      }
-      if ($session->getRegistrationToken())
-      {
-         $result['RegistrationToken'] = 'registrationToken=' . $session->getRegistrationToken()->getRegistrationToken();
-      }
-      return $result;
    }
 
    /**
@@ -78,17 +62,12 @@ final class SkypeClient
     */
    private function loginOAuthMicrosoft(Session $session): OAuthMicrosoft
    {
-      $response = $this->httpClient->request('GET', 'https://login.skype.com/login/oauth/microsoft', [
+      $response = $this->request('GET', 'https://login.skype.com/login/oauth/microsoft', [
          'query' => [
-            'client_id' => self::CLIENT_ID,
+            'client_id' => $this->clientId,
             'redirect_uri' => 'https://web.skype.com/username=' . $session->getAccount()->getUsername(),
          ],
-         'headers' => $this->buildRequestHeaders($session),
       ]);
-      if (Response::HTTP_OK !== $response->getStatusCode())
-      {
-         throw new  ClientOauthMicrosoftLoginException('Incorrect status code');
-      }
       $page = $response->getContent();
       preg_match('/urlPost:\'(.+)\',/isU', $page, $loginURL);
       preg_match('/name="PPFT" id="(.+)" value="(.+)"/isU', $page, $ppft);
@@ -122,7 +101,7 @@ final class SkypeClient
     */
    private function loginOAuthMicrosoftRedirect(Session $session): OAuthMicrosoftRedirect
    {
-      $response = $this->httpClient->request('POST', $session->getOAuthMicrosoft()->getLoginUrl(), [
+      $response = $this->request('POST', $session->getOAuthMicrosoft()->getLoginUrl(), [
          'body' => [
             'loginfmt' => $session->getAccount()->getUsername(),
             'login' => $session->getAccount()->getUsername(),
@@ -142,14 +121,10 @@ final class SkypeClient
             'i21' => 0,
             'i13' => 0,
          ],
-         'headers' => array_merge($this->buildRequestHeaders($session), [
+         'headers' => [
             'Cookie' => $session->getOAuthMicrosoft()->getCookies(),
-         ]),
+         ],
       ]);
-      if (Response::HTTP_OK !== $response->getStatusCode())
-      {
-         throw new  ClientOauthMicrosoftRedirectLoginException('Incorrect status code');
-      }
       $page = $response->getContent();
       preg_match('/<input type="hidden" name="NAP" id="NAP" value="(.+)">/isU', $page, $NAP);
       preg_match('/<input type="hidden" name="ANON" id="ANON" value="(.+)">/isU', $page, $ANON);
@@ -183,9 +158,9 @@ final class SkypeClient
     */
    private function loginOauthSkype(Session $session): OAuthSkype
    {
-      $response = $this->httpClient->request('POST', 'https://lw.skype.com/login/oauth/proxy', [
+      $response = $this->request('POST', 'https://lw.skype.com/login/oauth/proxy', [
          'query' => [
-            'client_id' => self::CLIENT_ID,
+            'client_id' => $this->clientId,
             'redirect_uri' => 'https://web.skype.com/&site_name=lw.skype.com&wa=wsignin1.0',
          ],
          'body' => [
@@ -193,14 +168,10 @@ final class SkypeClient
             'ANON' => $session->getOAuthMicrosoftRedirect()->getANON(),
             't' => $session->getOAuthMicrosoftRedirect()->getT(),
          ],
-         'headers' => array_merge($this->buildRequestHeaders($session), [
+         'headers' => [
             'Cookie' => $session->getOAuthMicrosoftRedirect()->getCookies(),
-         ]),
+         ],
       ]);
-      if (Response::HTTP_OK !== $response->getStatusCode())
-      {
-         throw new  ClientOauthSkypeLoginException('Incorrect status code');
-      }
       $page = $response->getContent();
       preg_match('/<input type="hidden" name="t" value="(.+)"\/>/isU', $page, $t);
       if (empty($t[1]))
@@ -225,9 +196,9 @@ final class SkypeClient
     */
    private function loginSkypeToken(Session $session): SkypeToken
    {
-      $response = $this->httpClient->request('POST', 'https://login.skype.com/login/microsoft', [
+      $response = $this->request('POST', 'https://login.skype.com/login/microsoft', [
          'query' => [
-            'client_id' => self::CLIENT_ID,
+            'client_id' => $this->clientId,
             'redirect_uri' => 'https://web.skype.com/',
          ],
          'body' => [
@@ -235,14 +206,10 @@ final class SkypeClient
             'site_name' => 'lw.skype.com',
             'oauthPartner' => 999,
             'form' => '',
-            'client_id' => self::CLIENT_ID,
+            'client_id' => $this->clientId,
             'redirect_uri' => 'https://web.skype.com/'
          ],
       ]);
-      if (Response::HTTP_OK !== $response->getStatusCode())
-      {
-         throw new  SessionException('Incorrect status code');
-      }
       $page = $response->getContent();
       preg_match('/<input type="hidden" name="skypetoken" value="(.+)"\/>/isU', $page, $skypeToken);
       if (empty($skypeToken[1]))
@@ -257,6 +224,7 @@ final class SkypeClient
    /**
     * Register in the Skype and setup registrationToken.
     * This method depends of @see loginSkype retrieved values.
+    * Method detects Messenger URL by redirecting on Clients Server.
     * @param Session $session
     * @return RegistrationToken
     * @throws SessionException
@@ -264,20 +232,18 @@ final class SkypeClient
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws ClientOauthMicrosoftLoginException
     */
    private function loginRegistrationToken(Session $session): RegistrationToken
    {
-      $response = $this->httpClient->request('POST', 'https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/endpoints', [
+      $response = $this->request('POST', 'https://client-s.gateway.messenger.live.com/v1/users/ME/endpoints', [
          'body' => '{}',
-         'headers' => array_merge($this->buildRequestHeaders($session), [
+         'authorization_session' => $session,
+         'headers' => [
             'Cookie' => $session->getOAuthMicrosoft()->getCookies(),
-         ]),
-      ]);
-      if (Response::HTTP_OK !== $response->getStatusCode())
-      {
-         throw new ClientOauthMicrosoftLoginException(sprintf('Incorrect status code %s', $response->getStatusCode()));
-      }
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+         ],
+      ], $redirectUrl);
       $headers = $response->getHeaders();
       if (empty($headers['set-registrationtoken'][0]))
       {
@@ -291,6 +257,15 @@ final class SkypeClient
       $result = new RegistrationToken();
       $result->setRegistrationToken((string)$registrationToken[1]);
       $result->setResponse(json_decode($response->getContent(), true));
+      if (!empty($redirectUrl))
+      {
+         $messengerUrl = substr($redirectUrl, 0, strpos($redirectUrl, '/users'));
+         $result->setMessengerUrl($messengerUrl);
+      }
+      else
+      {
+         $result->setMessengerUrl('https://client-s.gateway.messenger.live.com/v1');
+      }
       return $result;
    }
 
@@ -328,6 +303,9 @@ final class SkypeClient
          $session->setSkypeToken($skypeToken);
          $registrationToken = $this->loginRegistrationToken($session);
          $session->setRegistrationToken($registrationToken);
+         $profile = $this->loadMyProfile($session);
+         $skypeAccount = new SkypeAccount($profile['username'], $profile['firstname'] . ' ' . $profile['lastname']);
+         $account->setSkypeAccount($skypeAccount);
          $this->sessionManager->saveSession($session);
       }
       elseif ($session->isExpired($now))
@@ -341,7 +319,6 @@ final class SkypeClient
     * Load current user properties.
     * @param Session $session
     * @return array
-    * @throws ClientException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
@@ -349,13 +326,28 @@ final class SkypeClient
     */
    public function loadMyProperties(Session $session)
    {
-      $response = $this->httpClient->request('GET', 'https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/properties', [
-         'headers' => $this->buildRequestHeaders($session),
+      $url = sprintf('%s/users/ME/properties', $session->getRegistrationToken()->getMessengerUrl());
+      $response = $this->request('GET', $url, [
+         'authorization_session' => $session,
       ]);
-      if (Response::HTTP_OK !== $response->getStatusCode())
-      {
-         throw new ClientException(sprintf('Incorrect status code %s', $response->getStatusCode()));
-      }
+      $result = json_decode($response->getContent(), true);
+      return $result;
+   }
+
+   /**
+    * Load current user profile.
+    * @param Session $session
+    * @return array|mixed
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   public function loadMyProfile(Session $session)
+   {
+      $response = $this->request('GET', 'https://api.skype.com/users/self/profile', [
+         'authorization_session' => $session,
+      ]);
       $result = json_decode($response->getContent(), true);
       return $result;
    }
@@ -371,8 +363,8 @@ final class SkypeClient
     */
    public function loadMyInvites(Session $session): array
    {
-      $response = $this->httpClient->request('GET', 'https://edge.skype.com/pcs/contacts/v2/users/self/invites', [
-         'headers' => $this->buildRequestHeaders($session),
+      $response = $this->request('GET', 'https://edge.skype.com/pcs/contacts/v2/users/self/invites', [
+         'authorization_session' => $session,
       ]);
       $result = json_decode($response->getContent(), true);
       return $result;
@@ -387,8 +379,8 @@ final class SkypeClient
     */
    public function search(Session $session)
    {
-      $response = $this->httpClient->request('GET', "https://skypegraph.skype.com/search/v1.1/namesearch/swx/?requestid=skype.com-1.63.51&searchstring=Andrew", [
-         'headers' => $this->buildRequestHeaders($session),
+      $response = $this->request('GET', "https://skypegraph.skype.com/search/v1.1/namesearch/swx/?requestid=skype.com-1.63.51&searchstring=Andrew", [
+         'authorization_session' => $session,
       ]);
       $c = $response->getContent();
       return;
@@ -427,65 +419,46 @@ final class SkypeClient
 //      return isset($data["code"]) && $data["code"] == 20100;
    }
 
-
    /**
+    * Send message from skype Account in the Session to Skype Account in the arguments.
     * @param Session $session
-    * @param $username
+    * @param SkypeAccount $skypeAccount
     * @param string $content
     * @return int|mixed
-    * @throws ClientException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
     */
-   public function sendMessage(Session $session, $username, $content = 'Hello, I would like to add you to my contacts.')
+   public function sendMessage(Session $session, SkypeAccount $skypeAccount, $content)
    {
-      $properties = $this->loadMyProperties($session);
-      $user = 'live:.cid.c63a79af58b7d4d6';
-      $mode = strstr($user, 'thread.skype') ? 19 : 8;
-      $messageId = $this->timestamp();
-//      $post = [
-//         'content' => $content,
-//         'messagetype' => 'RichText',
-//         'contenttype' => 'text',
-//         "clientmessageid" => $messageID,
-//         'Has-Mentions' => false,
-//         'imdisplayname' => 'Andrew Svirin',
-//      ];
-      // Request URL: https://client-s.gateway.messenger.live.com/v1/users/ME/conversations/8%3Alive%3A.cid.96f38d452beca739/messages?x-ecs-etag=%22ghCANS31bkW6HRwsS4kiq0URYwULQVQ%2BCkQiD9MStAg%3D%22
-      // Request URL: https://client-s.gateway.messenger.live.com/v1/users/ME/conversations/8%3Alive%3A.cid.96f38d452beca739/messages?x-ecs-etag=%22ghCANS31bkW6HRwsS4kiq0URYwULQVQ%2BCkQiD9MStAg%3D%22
-      // https://client-s.gateway.messenger.live.com/v1/users/ME/conversations/8%3Alive%3A.cid.96f38d452beca739/messages?x-ecs-etag=%2242VqaUhEFKPFn5%2FLpi56T6H7i6m7IM7xBqxLGIfuf1w%3D%22
-      $url = 'https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/conversations/8%3Alive%3A.cid.c63a79af58b7d4d6/messages';
-      $body = json_encode([
-         'clientmessageid' => '1111' . $messageId,
-         'composetime' => date('Y-m-d\TH:i:s.410\Z'),
-         'content' => 'hi',
-         'messagetype' => "RichText",
-         'contenttype' => "text",
-         'imdisplayname' => "Test 2 Test 2",
-         'receiverdisplayname' => "Test 1 Test 1",
+      $dateTime = DateTime::createFromFormat('0.u00 U', microtime());
+      $mode = strstr($skypeAccount->getUsername(), 'thread.skype') ? 19 : 8;
+      $url = sprintf(
+         '%s/users/ME/conversations/%d:%s/messages',
+         $session->getRegistrationToken()->getMessengerUrl(),
+         $mode,
+         $skypeAccount->getUsername()
+      );
+      $body = [
+         'clientmessageid' => $dateTime->format('Uu'),
+         'composetime' => $dateTime->format('Y-m-d\TH:i:s.v\Z'),
+         'content' => $content,
+         'messagetype' => 'RichText',
+         'contenttype' => 'text',
+         'imdisplayname' => $session->getAccount()->getSkypeAccount()->getFullName(),
+         'receiverdisplayname' => $skypeAccount->getFullName(),
+      ];
+      $response = $this->request('POST', $url, [
+         'body' => json_encode($body),
+         'authorization_session' => $session,
+         'headers' => [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+         ],
       ]);
-      $headers = array_merge($this->buildRequestHeaders($session), [
-         'Content-Type' => 'application/json',
-         'Accept' => 'application/json',
-         'Origin' => 'https://web.skype.com',
-         'Referer' => 'https://web.skype.com',
-      ]);
-
-      unset($headers['X-Skypetoken']);
-//      $headers['RegistrationToken'] .= '; endpointId={332afad6-9243-4346-af4e-393f4205d524}';
-      $response = $this->httpClient->request('POST', $url, [
-//         'query' => [
-//            'x-ecs-etag' => '%22jWc8FepU5tcXiZmlZ4YwmlYRb80DPi4f'
-//         ],
-         'body' => $body,
-         'headers' => $headers,
-      ]);
-      $c = $response->getContent();
-//      $req = json_decode($this->web("https://bn2-client-s.gateway.messenger.live.com/v1/users/ME/conversations/$mode:$user/messages", "POST", json_encode($post)), true);
-
-      return;
+      $result = json_decode($response->getContent(), true);
+      return $result;
    }
 
    private function web($url, $mode = "GET", $post = [], $showHeaders = false, $follow = true, $customCookies = "", $customHeaders = [])
@@ -556,12 +529,8 @@ final class SkypeClient
       return end($url);
    }
 
-   private function timestamp()
-   {
-      return str_replace('.', '', microtime(1));
-   }
-
 //   public function sendMessage($user, $message)
+
 //   {
 //      $user = $this->URLtoUser($user);
 //      $mode = strstr($user, "thread.skype") ? 19 : 8;
@@ -578,7 +547,6 @@ final class SkypeClient
 //
 //      return isset($req["OriginalArrivalTime"]) ? $messageID : 0;
 //   }
-
    public function getMessagesList($user, $size = 100)
    {
       $user = $this->URLtoUser($user);
@@ -700,7 +668,6 @@ final class SkypeClient
       return !empty($req) ? $req : [];
    }
 
-
    public function skypeJoin($id)
    {
       $post = [
@@ -717,4 +684,53 @@ final class SkypeClient
 
       return $this->addUserToGroup($group, $this->username);
    }
+
+   /**
+    * Make server request.
+    * Extends basic options by internal.
+    * Catch redirects while request.
+    * @param string $method
+    * @param string $url
+    * @param array $options [
+    *    'authorization_session' => <Session> Add auth headers by Session.
+    * ]
+    * @param string $redirectUrl Returns url on that those 301 redirect.
+    * @return \Symfony\Contracts\HttpClient\ResponseInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   private function request(string $method, string $url, array $options = [], string &$redirectUrl = null)
+   {
+      if (isset($options['authorization_session']))
+      {
+         /* @var $session Session */
+         $session = $options['authorization_session'];
+         if ($session->getSkypeToken())
+         {
+            $options['headers']['X-Skypetoken'] = $session->getSkypeToken()->getSkypeToken();
+            $options['headers']['Authentication'] = 'skypetoken=' . $session->getSkypeToken()->getSkypeToken();
+         }
+         if ($session->getRegistrationToken())
+         {
+            $options['headers']['RegistrationToken'] = 'registrationToken=' . $session->getRegistrationToken()->getRegistrationToken();
+         }
+         unset($options['authorization_session']);
+      }
+      $options['on_progress'] = function (int $dlNow, int $dlSize, array $info) use (&$redirectUrl): void
+      {
+         if (isset($info['http_code']) && ($info['http_code'] == 301))
+         {
+            foreach ($info['response_headers'] as $responseHeader)
+            {
+               if ('Location' === substr($responseHeader, 0, 8))
+               {
+                  $redirectUrl = trim(substr($responseHeader, 9));
+                  break;
+               }
+            }
+         }
+      };
+      $response = $this->httpClient->request($method, $url, $options);
+      return $response;
+   }
+
 }

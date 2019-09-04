@@ -45,6 +45,7 @@ final class ClientTest extends TestCase
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
     */
    public function testLogin(string $username, string $password)
    {
@@ -89,6 +90,7 @@ final class ClientTest extends TestCase
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
     */
    public function testMyInvites()
    {
@@ -116,9 +118,12 @@ final class ClientTest extends TestCase
    public function testSendMessage()
    {
       $account1 = $this->getAccount('user_1');
+      $session1 = $this->testLogin($account1->getUsername(), $account1->getPassword());
       $account2 = $this->getAccount('user_2');
       $session2 = $this->testLogin($account2->getUsername(), $account2->getPassword());
-      $this->client->sendMessage($session2, $account1->getUsername());
+      $this->client->sendMessage($session2, $session1->getAccount()->getSkypeAccount(), uniqid('Ping-'));
+      sleep(2);
+      $this->client->sendMessage($session1, $session2->getAccount()->getSkypeAccount(), uniqid('Pong-'));
    }
 
    /**

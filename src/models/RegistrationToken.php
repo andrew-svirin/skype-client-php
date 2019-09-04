@@ -18,6 +18,12 @@ class RegistrationToken
    private $response;
 
    /**
+    * Uses for Client communication with Skype Server.
+    * @var string
+    */
+   private $messengerUrl;
+
+   /**
     * @return string
     */
    public function getRegistrationToken(): string
@@ -47,6 +53,22 @@ class RegistrationToken
    public function setResponse(array $value): void
    {
       $this->response = $value;
+   }
+
+   /**
+    * @return string
+    */
+   public function getMessengerUrl(): string
+   {
+      return $this->messengerUrl;
+   }
+
+   /**
+    * @param string $value
+    */
+   public function setMessengerUrl(string $value): void
+   {
+      $this->messengerUrl = $value;
    }
 
 }
