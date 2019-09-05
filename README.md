@@ -38,3 +38,6 @@ Send message:
       $client->sendMessage($session, $conversation, 'Hi');
 ```
 More usage methods you can find in `tests/Unit/ClientTest.php` file.
+
+### Statistic
+[![Build Status](https://travis-ci.org/andrew-svirin/skype-client-php.svg?branch=master)](https://travis-ci.org/andrew-svirin/skype-client-php)

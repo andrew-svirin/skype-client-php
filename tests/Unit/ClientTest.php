@@ -228,12 +228,10 @@ final class ClientTest extends TestCase
     */
    private function generateDataProvider(string $secret)
    {
-      if (is_file($this->credentialsFilePath()))
+      if (!($user1 = EnvUtil::getUser1()) || !($user2 = EnvUtil::getUser2()))
       {
          return;
       }
-      $user1 = EnvUtil::getUser1();
-      $user2 = EnvUtil::getUser2();
       $accounts = [
          'user_1' => [
             'username' => $user1[0],
