@@ -7,8 +7,7 @@ vendor
 
 # Test data.
 Tests data
-tests/_data
-tests/_cache
+tests/_cache/debug/sessions
 
 # Testing env variables.
 envs.local.php
