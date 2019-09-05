@@ -334,10 +334,10 @@ final class SkypeClient
    public function loadMyProperties(Session $session): array
    {
       $url = sprintf('%s/users/ME/properties', $session->getRegistrationToken()->getMessengerUrl());
-      $response = $this->request('GET', $url, [
+      $content = $this->requestContent('GET', $url, [
          'authorization_session' => $session,
       ]);
-      $result = json_decode($response->getContent(), true);
+      $result = json_decode($content, true);
       return $result;
    }
 
@@ -352,10 +352,10 @@ final class SkypeClient
     */
    public function loadMyProfile(Session $session): array
    {
-      $response = $this->request('GET', 'https://api.skype.com/users/self/profile', [
+      $content = $this->requestContent('GET', 'https://api.skype.com/users/self/profile', [
          'authorization_session' => $session,
       ]);
-      $result = json_decode($response->getContent(), true);
+      $result = json_decode($content, true);
       return $result;
    }
 
@@ -370,10 +370,10 @@ final class SkypeClient
     */
    public function loadMyInvites(Session $session): array
    {
-      $response = $this->request('GET', 'https://edge.skype.com/pcs/contacts/v2/users/self/invites', [
+      $content = $this->requestContent('GET', 'https://edge.skype.com/pcs/contacts/v2/users/self/invites', [
          'authorization_session' => $session,
       ]);
-      $result = json_decode($response->getContent(), true);
+      $result = json_decode($content, true);
       return $result;
    }
 
@@ -406,7 +406,7 @@ final class SkypeClient
          'imdisplayname' => $session->getAccount()->getConversation()->getLabel(),
          'receiverdisplayname' => $conversation->getLabel(),
       ];
-      $response = $this->request('POST', $url, [
+      $content = $this->requestContent('POST', $url, [
          'body' => json_encode($body),
          'authorization_session' => $session,
          'headers' => [
@@ -414,7 +414,7 @@ final class SkypeClient
             'Accept' => 'application/json',
          ],
       ]);
-      $result = json_decode($response->getContent(), true);
+      $result = json_decode($content, true);
       return $result;
    }
 
@@ -441,7 +441,7 @@ final class SkypeClient
          $conversation->getMode(),
          $conversation->getName()
       );
-      $response = $this->request('GET', $url, [
+      $content = $this->requestContent('GET', $url, [
          'query' => [
             'startTime' => 0,
             'pageSize' => $size,
@@ -454,7 +454,7 @@ final class SkypeClient
             'Accept' => 'application/json',
          ],
       ]);
-      $result = json_decode($response->getContent(), true);
+      $result = json_decode($content, true);
       return $result;
    }
 
@@ -495,7 +495,7 @@ final class SkypeClient
          '%s/threads',
          $session->getRegistrationToken()->getMessengerUrl()
       );
-      $response = $this->request('POST', $url, [
+      $content = $this->requestContent('POST', $url, [
          'body' => json_encode($body),
          'authorization_session' => $session,
          'headers' => [
@@ -503,7 +503,7 @@ final class SkypeClient
             'Accept' => 'application/json',
          ],
       ]);
-      $result = json_decode($response->getContent(), true);
+      $result = json_decode($content, true);
       return $result;
    }
 
@@ -551,17 +551,36 @@ final class SkypeClient
             }
          }
       };
+      $response = $this->httpClient->request($method, $url, $options);
+      return $response;
+   }
+
+   /**
+    * Request that responses content.
+    * @param string $method
+    * @param string $url
+    * @param array $options
+    * @param string|null $redirectUrl
+    * @return string
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   private function requestContent(string $method, string $url, array $options = [], string &$redirectUrl = null): string
+   {
+      $response = $this->request($method, $url, $options);
       try
       {
-         $response = $this->httpClient->request($method, $url, $options);
+         $content = $response->getContent();
       } catch (ClientException $exception)
       {
          if (!empty($redirectUrl))
          {
-            $response = $this->request($method, $redirectUrl, $options, $redirectUrl);
+            $content = $this->requestContent($method, $redirectUrl, $options, $redirectUrl);
          }
       }
-      return $response;
+      return $content;
    }
 
 }
