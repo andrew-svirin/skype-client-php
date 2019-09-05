@@ -3,12 +3,24 @@
 namespace AndrewSvirin\tests\Unit;
 
 use AndrewSvirin\SkypeClient\SkypeClient;
-use AndrewSvirin\SkypeClient\models\Account;
-use AndrewSvirin\SkypeClient\services\SessionManager;
+use AndrewSvirin\SkypeClient\Models\Account;
+use AndrewSvirin\SkypeClient\Services\SessionManager;
+use AndrewSvirin\SkypeClient\Utils\EnvUtil;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Class ClientTest
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
+ */
 final class ClientTest extends TestCase
 {
+
+   /**
+    * Algo to encode/decode session.
+    */
+   const ENCRYPT_ALGO = 'AES-128-ECB';
 
    private $dataDir = __DIR__ . '/../_data';
    private $cacheDir = __DIR__ . '/../_cache';
@@ -20,10 +32,16 @@ final class ClientTest extends TestCase
 
    /**
     * {@inheritdoc}
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
     */
    public function setUp()
    {
-      $sessionManager = new SessionManager($this->cacheDir . '/skype-client-php');
+      $sessionManager = new SessionManager(
+         $this->cacheDir . '/sessions',
+         EnvUtil::getSecret(),
+         true,
+         $this->cacheDir . '/debug_sessions'
+      );
       $this->client = new SkypeClient($sessionManager);
    }
 
@@ -31,15 +49,15 @@ final class ClientTest extends TestCase
     * @dataProvider accountProvider
     * @param string $username
     * @param string $password
-    * @return \AndrewSvirin\SkypeClient\models\Session
-    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @return \AndrewSvirin\SkypeClient\Models\Session
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
@@ -54,19 +72,19 @@ final class ClientTest extends TestCase
    }
 
    /**
-    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
     */
    public function testMyProperties()
    {
@@ -76,19 +94,19 @@ final class ClientTest extends TestCase
    }
 
    /**
-    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
     */
    public function testMyInvites()
    {
@@ -98,19 +116,19 @@ final class ClientTest extends TestCase
    }
 
    /**
-    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
     */
    public function testSendMessage()
    {
@@ -124,15 +142,15 @@ final class ClientTest extends TestCase
    }
 
    /**
-    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
@@ -150,15 +168,15 @@ final class ClientTest extends TestCase
    }
 
    /**
-    * @throws \AndrewSvirin\SkypeClient\exceptions\AccountCacheFileSaveException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthMicrosoftRedirectLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\ClientOauthSkypeLoginException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionDirCreateException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileLoadException
-    * @throws \AndrewSvirin\SkypeClient\exceptions\SessionFileRemoveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
@@ -180,31 +198,96 @@ final class ClientTest extends TestCase
    /**
     * Skype Accounts credentials data provider.
     * @return array
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
     */
-   public function accountProvider()
+   public function accountProvider(): array
    {
-      $credentials = json_decode(file_get_contents($this->dataDir . '/credentials.json'), true);
+      $secret = EnvUtil::getSecret();
+      $this->generateDataProvider($secret);
+      $accountsEnc = json_decode(file_get_contents($this->credentialsFilePath()), true);
       $accounts = [];
-      foreach ($credentials as $user => $credential)
+      foreach ($accountsEnc as $name => $account)
       {
-         $accounts[$user] = [
-            'username' => base64_decode($credential['username']),
-            'password' => base64_decode($credential['password']),
+         $accounts[$name] = [
+            'username' => $this->decrypt($account['username'], $secret),
+            'password' => $this->decrypt($account['password'], $secret),
          ];
       }
       return $accounts;
+   }
+
+   private function credentialsFilePath()
+   {
+      return $this->dataDir . '/credentials.json';
+   }
+
+   /**
+    * Generate data provider.
+    * Extract from env debugging variables and populate credentials data file.
+    * @param string $secret
+    */
+   private function generateDataProvider(string $secret)
+   {
+      if (is_file($this->credentialsFilePath()))
+      {
+         return;
+      }
+      $user1 = EnvUtil::getUser1();
+      $user2 = EnvUtil::getUser2();
+      $accounts = [
+         'user_1' => [
+            'username' => $user1[0],
+            'password' => $user1[1],
+         ],
+         'user_2' => [
+            'username' => $user2[0],
+            'password' => $user2[1],
+         ],
+      ];
+      $accountsEnc = [];
+      foreach ($accounts as $name => $account)
+      {
+         $accountsEnc[$name] = [
+            'username' => $this->encrypt($account['username'], $secret),
+            'password' => $this->encrypt($account['password'], $secret),
+         ];
+      }
+      file_put_contents($this->dataDir . '/credentials.json', json_encode($accountsEnc, JSON_PRETTY_PRINT));
    }
 
    /**
     * Skype Account credentials for user.
     * @param string $user
     * @return Account
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
     */
    public function getAccount(string $user): Account
    {
       $accountProvider = $this->accountProvider();
       $credentials = $accountProvider[$user];
       return new Account($credentials['username'], $credentials['password']);
+   }
+
+   /**
+    * Encrypt text.
+    * @param string $text
+    * @param string $secret
+    * @return string
+    */
+   private function encrypt(string $text, string $secret): string
+   {
+      return base64_encode(openssl_encrypt($text, self::ENCRYPT_ALGO, $secret));
+   }
+
+   /**
+    * Decrypt text.
+    * @param string $text
+    * @param string $secret
+    * @return string
+    */
+   private function decrypt(string $text, string $secret)
+   {
+      return openssl_decrypt(base64_decode($text), self::ENCRYPT_ALGO, $secret);
    }
 
 }

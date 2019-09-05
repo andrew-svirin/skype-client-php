@@ -1,11 +1,14 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\models;
+namespace AndrewSvirin\SkypeClient\Models;
 
 use Symfony\Component\HttpFoundation\Cookie;
 
 /**
  * Property for class @see Session that holds data retrieved from OAuth Microsoft.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class OAuthMicrosoft
 {

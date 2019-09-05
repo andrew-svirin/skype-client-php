@@ -1,11 +1,14 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\factories;
+namespace AndrewSvirin\SkypeClient\Factories;
 
-use AndrewSvirin\SkypeClient\models\RegistrationToken;
+use AndrewSvirin\SkypeClient\Models\RegistrationToken;
 
 /**
  * Class SessionFactory manages conversion RegistrationToken to data and reverse.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class RegistrationTokenFactory
 {

@@ -1,17 +1,20 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\models;
+namespace AndrewSvirin\SkypeClient\Models;
 
 use DateTime;
 
 /**
  * Decorator for class @see Account that holds data related for cache.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class Session
 {
 
    /**
-    * Account.
+    * Session related Account.
     *
     * @var Account
     */

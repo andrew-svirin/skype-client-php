@@ -9,3 +9,6 @@ vendor
 Tests data
 tests/_data
 tests/_cache
+
+# Testing env variables.
+envs.local.php

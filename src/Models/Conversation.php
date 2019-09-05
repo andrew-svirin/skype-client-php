@@ -1,22 +1,25 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\models;
+namespace AndrewSvirin\SkypeClient\Models;
 
 /**
  * Skype conversation can be used for account or group interactions with another account.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class Conversation
 {
 
    /**
-    * Username.
+    * Skype Name of User or Group.
     *
     * @var string
     */
    private $name;
 
    /**
-    * Full Name.
+    * First Name and Last Name for User and Group Name fro group.
     *
     * @var string
     */
@@ -37,7 +40,6 @@ class Conversation
    }
 
    /**
-    * First Name and Last Name.
     * @return string
     */
    public function getLabel(): string
@@ -46,6 +48,7 @@ class Conversation
    }
 
    /**
+    * User or Group mode.
     * @return int
     */
    public function getMode(): int

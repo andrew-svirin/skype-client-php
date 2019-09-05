@@ -1,11 +1,14 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\factories;
+namespace AndrewSvirin\SkypeClient\Factories;
 
-use AndrewSvirin\SkypeClient\models\Conversation;
+use AndrewSvirin\SkypeClient\Models\Conversation;
 
 /**
  * Class ConversationFactory manages conversion Conversation to data and reverse.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class ConversationFactory
 {

@@ -1,11 +1,14 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\models;
+namespace AndrewSvirin\SkypeClient\Models;
 
 use Symfony\Component\HttpFoundation\Cookie;
 
 /**
  * Property for class @see Session that holds data retrieved from OAuth Microsoft Redirect.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class OAuthMicrosoftRedirect
 {
@@ -22,7 +25,7 @@ class OAuthMicrosoftRedirect
    /**
     * @var string
     */
-   private $t;
+   private $token;
 
    /**
     * @var Cookie[]
@@ -64,17 +67,17 @@ class OAuthMicrosoftRedirect
    /**
     * @return string
     */
-   public function getT(): string
+   public function getToken(): string
    {
-      return $this->t;
+      return $this->token;
    }
 
    /**
     * @param string $value
     */
-   public function setT(string $value)
+   public function setToken(string $value)
    {
-      $this->t = $value;
+      $this->token = $value;
    }
 
    /**

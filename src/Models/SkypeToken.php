@@ -1,9 +1,12 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\models;
+namespace AndrewSvirin\SkypeClient\Models;
 
 /**
  * Property for class @see Session that holds data retrieved from Skype Token.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class SkypeToken
 {

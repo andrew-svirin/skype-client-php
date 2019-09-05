@@ -1,13 +1,16 @@
 <?php
 
-namespace AndrewSvirin\SkypeClient\factories;
+namespace AndrewSvirin\SkypeClient\Factories;
 
-use AndrewSvirin\SkypeClient\models\Account;
-use AndrewSvirin\SkypeClient\models\Session;
+use AndrewSvirin\SkypeClient\Models\Account;
+use AndrewSvirin\SkypeClient\Models\Session;
 use DateTime;
 
 /**
  * Class SessionFactory manages conversion Session to data and reverse.
+ *
+ * @license http://www.opensource.org/licenses/mit-license.html  MIT License
+ * @author Andrew Svirin
  */
 class SessionFactory
 {
