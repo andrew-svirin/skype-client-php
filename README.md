@@ -2,8 +2,8 @@
 Provides interface for communicate with Skype server using Skype Account.
 Can be used to some skype integrations.
 
-#Troubleshooting
-Before usage please login by web-browser first, because account can be blocked by Skype server.
+# Troubleshooting
+Before usage please login by web-browser first, because account can be blocked by the Skype server.
 
 ### Installation
 ```bash
