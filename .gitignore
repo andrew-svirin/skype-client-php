@@ -1,0 +1,13 @@
+# IntellijIdea files
+.idea
+
+# Composer
+composer.lock
+vendor
+
+# Test data.
+Tests data
+tests/_cache/debug_sessions
+
+# Testing env variables.
+envs.local.php
