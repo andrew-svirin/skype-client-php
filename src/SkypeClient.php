@@ -568,15 +568,20 @@ final class SkypeClient
     */
    private function requestContent(string $method, string $url, array $options = [], string &$redirectUrl = null): string
    {
-      $response = $this->request($method, $url, $options);
+      $response = $this->request($method, $url, $options, $redirectUrl);
       try
       {
          $content = $response->getContent();
       } catch (ClientException $exception)
       {
+         // For testing purpose Skype can change Server Messenger URL and attempting to request should be repeated.
          if (!empty($redirectUrl))
          {
             $content = $this->requestContent($method, $redirectUrl, $options, $redirectUrl);
+         }
+         else
+         {
+            throw $exception;
          }
       }
       return $content;
