@@ -16,9 +16,12 @@ use AndrewSvirin\SkypeClient\Models\Session;
 use AndrewSvirin\SkypeClient\Models\SkypeToken;
 use AndrewSvirin\SkypeClient\Services\SessionManager;
 use DateTime;
+use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Class SkypeClient implements methods to interact with Skype Server.
@@ -517,7 +520,7 @@ final class SkypeClient
     * @return \Symfony\Contracts\HttpClient\ResponseInterface
     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
     */
-   private function request(string $method, string $url, array $options = [], string &$redirectUrl = null)
+   private function request(string $method, string $url, array $options = [], string &$redirectUrl = null): ?ResponseInterface
    {
       if (isset($options['authorization_session']))
       {
@@ -548,10 +551,15 @@ final class SkypeClient
             }
          }
       };
-      $response = $this->httpClient->request($method, $url, $options);
-      if (!empty($redirectUrl))
+      try
       {
-         $this->request($method, $redirectUrl, $options, $redirectUrl);
+         $response = $this->httpClient->request($method, $url, $options);
+      } catch (ClientException $exception)
+      {
+         if (!empty($redirectUrl))
+         {
+            $response = $this->request($method, $redirectUrl, $options, $redirectUrl);
+         }
       }
       return $response;
    }
