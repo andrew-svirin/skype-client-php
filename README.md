@@ -22,7 +22,7 @@ Include
 Initialize Client:
 ```php
       $sessionManager = new SessionManager(
-         $this->cacheDir . '/sessions',
+         __PROTECTED_DIR__ . '/sessions',
          EnvUtil::getSecret()
       );
       $client = new SkypeClient($sessionManager);
