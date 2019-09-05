@@ -549,6 +549,10 @@ final class SkypeClient
          }
       };
       $response = $this->httpClient->request($method, $url, $options);
+      if (!empty($redirectUrl))
+      {
+         $this->request($method, $redirectUrl, $options, $redirectUrl);
+      }
       return $response;
    }
 
