@@ -28,6 +28,16 @@ class EnvUtil
    }
 
    /**
+    * Is debug mode or not.
+    * @return bool
+    */
+   public static function isDebug(): bool
+   {
+      return is_string(getenv('DEBUG')) && 'TRUE' === getenv('DEBUG');
+   }
+
+
+   /**
     * User 1 details. Optional.
     * @return array
     */

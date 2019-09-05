@@ -53,7 +53,7 @@ class Conversation
     */
    public function getMode(): int
    {
-      $mode = strstr($this->name, 'thread.skype') ? 19 : 8;
+      $mode = strstr($this->name, '@thread.skype') ? 19 : 8;
       return $mode;
    }
 

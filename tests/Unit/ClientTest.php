@@ -39,7 +39,7 @@ final class ClientTest extends TestCase
       $sessionManager = new SessionManager(
          $this->cacheDir . '/sessions',
          EnvUtil::getSecret(),
-         true,
+         EnvUtil::isDebug(),
          $this->cacheDir . '/debug_sessions'
       );
       $this->client = new SkypeClient($sessionManager);
@@ -68,6 +68,7 @@ final class ClientTest extends TestCase
       $account = new Account($username, $password);
       $session = $this->client->login($account);
       $this->assertNotEmpty($session);
+      sleep(2);
       return $session;
    }
 
@@ -191,8 +192,33 @@ final class ClientTest extends TestCase
       $members = [
          $session2->getAccount()->getConversation(),
       ];
-      $this->client->createGroup($session1, uniqid('Group-'), $members);
-      $this->client->createGroup($session2, uniqid('Group-'));
+      $this->assertObjectHasAttribute('name', $this->client->createGroup($session1, uniqid('Group-'), $members));
+      $this->assertObjectHasAttribute('name', $this->client->createGroup($session2, uniqid('Group-')));
+   }
+
+   /**
+    * @group lgd
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\AccountCacheFileSaveException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionDirCreateException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileLoadException
+    * @throws \AndrewSvirin\SkypeClient\Exceptions\SessionFileRemoveException
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   public function testLoadGroup()
+   {
+      $account1 = $this->getAccount('user_1');
+      $session1 = $this->testLogin($account1->getUsername(), $account1->getPassword());
+      $conversation = $this->client->createGroup($session1, uniqid('Group-'));
+      $this->assertObjectHasAttribute('name', $conversation);
+      $this->assertArrayHasKey('id', $this->client->loadGroup($session1, $conversation));
    }
 
    /**
