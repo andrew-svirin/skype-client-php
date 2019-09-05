@@ -2,6 +2,7 @@
 
 namespace AndrewSvirin\SkypeClient;
 
+use AndrewSvirin\SkypeClient\Contracts\SkypeClientInterface;
 use AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftLoginException;
 use AndrewSvirin\SkypeClient\Exceptions\ClientOauthMicrosoftRedirectLoginException;
 use AndrewSvirin\SkypeClient\Exceptions\ClientOauthSkypeLoginException;
@@ -28,7 +29,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * @license http://www.opensource.org/licenses/mit-license.html  MIT License
  * @author Andrew Svirin
  */
-final class SkypeClient
+final class SkypeClient implements SkypeClientInterface
 {
 
    /**
@@ -56,6 +57,73 @@ final class SkypeClient
          ],
       ]);
       $this->sessionManager = $sessionManager;
+   }
+
+   /**
+    * Make server request.
+    * Extends basic options by internal.
+    * Catch redirects while request.
+    * @param string $method
+    * @param string $url
+    * @param array $options [
+    *    'authorization_session' => <Session> Add auth headers by Session.
+    * ]
+    * @param string $redirectUrl Returns url on that those 301 redirect.
+    * @return \Symfony\Contracts\HttpClient\ResponseInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    */
+   private function request(string $method, string $url, array $options = [], string &$redirectUrl = null): ?ResponseInterface
+   {
+      if (isset($options['authorization_session']))
+      {
+         /* @var $session Session */
+         $session = $options['authorization_session'];
+         if ($session->getSkypeToken())
+         {
+            $options['headers']['X-Skypetoken'] = $session->getSkypeToken()->getSkypeToken();
+            $options['headers']['Authentication'] = 'skypetoken=' . $session->getSkypeToken()->getSkypeToken();
+         }
+         if ($session->getRegistrationToken())
+         {
+            $options['headers']['RegistrationToken'] = 'registrationToken=' . $session->getRegistrationToken()->getRegistrationToken();
+         }
+         unset($options['authorization_session']);
+      }
+      $options['on_progress'] = function (int $dlNow, int $dlSize, array $info) use (&$redirectUrl): void
+      {
+         if (isset($info['http_code']) && ($info['http_code'] == 301))
+         {
+            foreach ($info['response_headers'] as $responseHeader)
+            {
+               if ('Location' === substr($responseHeader, 0, 8))
+               {
+                  $redirectUrl = trim(substr($responseHeader, 9));
+                  break;
+               }
+            }
+         }
+      };
+      $response = $this->httpClient->request($method, $url, $options);
+      // Try to execute Request.
+      try
+      {
+         $response->getContent();
+      } catch (ClientException $exception)
+      {
+         // For testing purpose Skype can change Server Messenger URL and attempting to request should be repeated.
+         if (!empty($redirectUrl))
+         {
+            $response = $this->request($method, $redirectUrl, $options, $redirectUrl);
+         }
+         else
+         {
+            throw $exception;
+         }
+      }
+      return $response;
    }
 
    /**
@@ -255,11 +323,11 @@ final class SkypeClient
          ],
       ], $redirectUrl);
       $headers = $response->getHeaders();
-      if (empty($headers['set-registrationtoken'][0]))
+      if (empty($headers['set-registrationtoken']))
       {
          throw new SessionException('Missing registrationToken');
       }
-      preg_match('/registrationToken=(?<registration_token>.+);/isU', $headers['set-registrationtoken'][0], $registrationToken);
+      preg_match('/registrationToken=(?<registration_token>.+);/isU', reset($headers['set-registrationtoken']), $registrationToken);
       if (empty($registrationToken['registration_token']))
       {
          throw new SessionException('Missing registrationToken');
@@ -276,23 +344,7 @@ final class SkypeClient
    }
 
    /**
-    * Login process consists from 2 parts: login to Microsoft & login to Skype.
-    * This method create/restore session and setup expire date for session and save to session storage.
-    * @param Account $account
-    * @param DateTime|null $now
-    * @return Session
-    * @throws ClientOauthMicrosoftLoginException
-    * @throws ClientOauthMicrosoftRedirectLoginException
-    * @throws ClientOauthSkypeLoginException
-    * @throws SessionException
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    * @throws Exceptions\AccountCacheFileSaveException
-    * @throws Exceptions\SessionDirCreateException
-    * @throws Exceptions\SessionFileLoadException
-    * @throws Exceptions\SessionFileRemoveException
+    * {@inheritdoc}
     */
    public function login(Account $account, DateTime $now = null): Session
    {
@@ -322,70 +374,46 @@ final class SkypeClient
    }
 
    /**
-    * Load current user properties.
-    * @param Session $session
-    * @return array
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * {@inheritdoc}
     */
    public function loadMyProperties(Session $session): array
    {
       $url = sprintf('%s/users/ME/properties', $session->getRegistrationToken()->getMessengerUrl());
-      $content = $this->requestContent('GET', $url, [
+      $response = $this->request('GET', $url, [
          'authorization_session' => $session,
       ]);
-      $result = json_decode($content, true);
+      $result = json_decode($response->getContent(), true);
       return $result;
    }
 
    /**
-    * Load current user profile.
-    * @param Session $session
-    * @return array|mixed
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * {@inheritdoc}
     */
    public function loadMyProfile(Session $session): array
    {
-      $content = $this->requestContent('GET', 'https://api.skype.com/users/self/profile', [
+      $url = 'https://api.skype.com/users/self/profile';
+      $response = $this->request('GET', $url, [
          'authorization_session' => $session,
       ]);
-      $result = json_decode($content, true);
+      $result = json_decode($response->getContent(), true);
       return $result;
    }
 
    /**
-    * Load current user invites list.
-    * @param Session $session
-    * @return array
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * {@inheritdoc}
     */
    public function loadMyInvites(Session $session): array
    {
-      $content = $this->requestContent('GET', 'https://edge.skype.com/pcs/contacts/v2/users/self/invites', [
+      $url = 'https://edge.skype.com/pcs/contacts/v2/users/self/invites';
+      $response = $this->request('GET', $url, [
          'authorization_session' => $session,
       ]);
-      $result = json_decode($content, true);
+      $result = json_decode($response->getContent(), true);
       return $result;
    }
 
    /**
-    * Send message from skype Account in the Session to Skype Account or Skype Group in the arguments.
-    * @param Session $session
-    * @param Conversation $conversation
-    * @param string $content
-    * @return int|mixed
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * {@inheritdoc}
     */
    public function sendMessage(Session $session, Conversation $conversation, $content): array
    {
@@ -405,7 +433,7 @@ final class SkypeClient
          'imdisplayname' => $session->getAccount()->getConversation()->getLabel(),
          'receiverdisplayname' => $conversation->getLabel(),
       ];
-      $content = $this->requestContent('POST', $url, [
+      $response = $this->request('POST', $url, [
          'body' => json_encode($body),
          'authorization_session' => $session,
          'headers' => [
@@ -413,20 +441,12 @@ final class SkypeClient
             'Accept' => 'application/json',
          ],
       ]);
-      $result = json_decode($content, true);
+      $result = json_decode($response->getContent(), true);
       return $result;
    }
 
    /**
-    * Load messages for Account from Conversation to Another Account or in the Group.
-    * @param Session $session
-    * @param Conversation $conversation
-    * @param int $size Amount of messages.
-    * @return array
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * {@inheritdoc}
     */
    public function loadMessages(Session $session, Conversation $conversation, $size = 100): array
    {
@@ -440,7 +460,7 @@ final class SkypeClient
          $conversation->getMode(),
          $conversation->getName()
       );
-      $content = $this->requestContent('GET', $url, [
+      $response = $this->request('GET', $url, [
          'query' => [
             'startTime' => 0,
             'pageSize' => $size,
@@ -453,22 +473,14 @@ final class SkypeClient
             'Accept' => 'application/json',
          ],
       ]);
-      $result = json_decode($content, true);
+      $result = json_decode($response->getContent(), true);
       return $result;
    }
 
    /**
-    * Create Group with Admin from Session and Members from arguments.
-    * @param Session $session
-    * @param string $topic
-    * @param Conversation[] $members
-    * @return array
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+    * {@inheritdoc}
     */
-   public function createGroup(Session $session, string $topic, array $members = []): array
+   public function createGroup(Session $session, string $topic, array $members = []): Conversation
    {
       $conversation = $session->getAccount()->getConversation();
       $body = [
@@ -494,7 +506,7 @@ final class SkypeClient
          '%s/threads',
          $session->getRegistrationToken()->getMessengerUrl()
       );
-      $content = $this->requestContent('POST', $url, [
+      $response = $this->request('POST', $url, [
          'body' => json_encode($body),
          'authorization_session' => $session,
          'headers' => [
@@ -502,89 +514,35 @@ final class SkypeClient
             'Accept' => 'application/json',
          ],
       ]);
-      $result = json_decode($content, true);
+      $headers = $response->getHeaders();
+      preg_match('/threads\/.*:(?<group_name>.+)/i', reset($headers['location']), $group);
+      $conversation = new Conversation($group['group_name'], $topic);
+      return $conversation;
+   }
+
+   /**
+    * {@inheritdoc}
+    */
+   public function loadGroup(Session $session, Conversation $conversation): array
+   {
+      $url = sprintf(
+         '%s/threads/%d:%s',
+         $session->getRegistrationToken()->getMessengerUrl(),
+         $conversation->getMode(),
+         $conversation->getName()
+      );
+      $response = $this->request('GET', $url, [
+         'query' => [
+            'view' => 'msnp24Equivalent',
+         ],
+         'authorization_session' => $session,
+         'headers' => [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+         ],
+      ]);
+      $result = json_decode($response->getContent(), true);
       return $result;
-   }
-
-   /**
-    * Make server request.
-    * Extends basic options by internal.
-    * Catch redirects while request.
-    * @param string $method
-    * @param string $url
-    * @param array $options [
-    *    'authorization_session' => <Session> Add auth headers by Session.
-    * ]
-    * @param string $redirectUrl Returns url on that those 301 redirect.
-    * @return \Symfony\Contracts\HttpClient\ResponseInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    */
-   private function request(string $method, string $url, array $options = [], string &$redirectUrl = null): ?ResponseInterface
-   {
-      if (isset($options['authorization_session']))
-      {
-         /* @var $session Session */
-         $session = $options['authorization_session'];
-         if ($session->getSkypeToken())
-         {
-            $options['headers']['X-Skypetoken'] = $session->getSkypeToken()->getSkypeToken();
-            $options['headers']['Authentication'] = 'skypetoken=' . $session->getSkypeToken()->getSkypeToken();
-         }
-         if ($session->getRegistrationToken())
-         {
-            $options['headers']['RegistrationToken'] = 'registrationToken=' . $session->getRegistrationToken()->getRegistrationToken();
-         }
-         unset($options['authorization_session']);
-      }
-      $options['on_progress'] = function (int $dlNow, int $dlSize, array $info) use (&$redirectUrl): void
-      {
-         if (isset($info['http_code']) && ($info['http_code'] == 301))
-         {
-            foreach ($info['response_headers'] as $responseHeader)
-            {
-               if ('Location' === substr($responseHeader, 0, 8))
-               {
-                  $redirectUrl = trim(substr($responseHeader, 9));
-                  break;
-               }
-            }
-         }
-      };
-      $response = $this->httpClient->request($method, $url, $options);
-      return $response;
-   }
-
-   /**
-    * Request that responses content.
-    * @param string $method
-    * @param string $url
-    * @param array $options
-    * @param string|null $redirectUrl
-    * @return string
-    * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
-    * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
-    */
-   private function requestContent(string $method, string $url, array $options = [], string &$redirectUrl = null): string
-   {
-      $response = $this->request($method, $url, $options, $redirectUrl);
-      try
-      {
-         $content = $response->getContent();
-      } catch (ClientException $exception)
-      {
-         // For testing purpose Skype can change Server Messenger URL and attempting to request should be repeated.
-         if (!empty($redirectUrl))
-         {
-            $content = $this->requestContent($method, $redirectUrl, $options, $redirectUrl);
-         }
-         else
-         {
-            throw $exception;
-         }
-      }
-      return $content;
    }
 
 }
