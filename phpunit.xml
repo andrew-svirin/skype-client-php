@@ -8,7 +8,7 @@
          beStrictAboutOutputDuringTests="true"
          beStrictAboutTodoAnnotatedTests="true"
          verbose="true">
-    <testsuite name="Skype Client PHP Unit Test Suite">
+    <testsuite name="PHP Unit Test Suite">
         <directory suffix="Test.php">./tests/Unit/</directory>
     </testsuite>
 

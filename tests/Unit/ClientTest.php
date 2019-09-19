@@ -1,7 +1,5 @@
 <?php
 
-namespace AndrewSvirin\tests\Unit;
-
 use AndrewSvirin\SkypeClient\SkypeClient;
 use AndrewSvirin\SkypeClient\Models\Account;
 use AndrewSvirin\SkypeClient\Services\SessionManager;
