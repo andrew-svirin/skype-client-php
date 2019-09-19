@@ -6,7 +6,9 @@
   "keywords": [
     "skype",
     "client",
-    "PHP"
+    "PHP",
+    "openssl",
+    "http"
   ],
   "authors": [
     {
