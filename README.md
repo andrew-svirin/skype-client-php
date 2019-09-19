@@ -1,11 +1,11 @@
-# SKYPE CLIENT (PHP)
+# SKYPE CLIENT (PHP) [![Build Status](https://travis-ci.org/andrew-svirin/skype-client-php.svg?branch=master)](https://travis-ci.org/andrew-svirin/skype-client-php)
 Provides interface for communicate with Skype server using Skype Account.
 Can be used to some skype integrations.
 
 # Troubleshooting
 Before usage please login by web-browser first, because account can be blocked by the Skype server.
 
-### Installation
+### Installation for PHP 7.2+
 ```bash
 $ composer require andrew-svirin/skype-client-php
 ```
@@ -38,6 +38,3 @@ Send message:
       $client->sendMessage($session, $conversation, 'Hi');
 ```
 More usage methods you can find in `tests/Unit/ClientTest.php` file.
-
-### Statistic
-[![Build Status](https://travis-ci.org/andrew-svirin/skype-client-php.svg?branch=master)](https://travis-ci.org/andrew-svirin/skype-client-php)
