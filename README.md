@@ -1,6 +1,6 @@
 # SKYPE CLIENT (PHP) [![Build Status](https://travis-ci.org/andrew-svirin/skype-client-php.svg?branch=master)](https://travis-ci.org/andrew-svirin/skype-client-php)
 Provides interface for communicate with Skype server using Skype Account.
-Can be used to some skype integrations.
+Can be used to some skype integrations. In Symfony exists notifier module that can be extended by this library.
 
 # Troubleshooting
 Before usage please login by web-browser first, because account can be blocked by the Skype server.
